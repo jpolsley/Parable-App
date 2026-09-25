@@ -14,7 +14,7 @@ AI is an optional assistant powered by **your own self-hosted model**.
 - **Live run times.** Set a start time and every section and part shows its clock time; totals update as you edit.
 - **Supplies that scale.** Enter quantities "per kid" or "per group" and the supply list totals them for your class size, with a checklist.
 - **Parts library.** Save a part (weekly welcome, favorite game) and insert it into any service.
-- **Print** a full leader guide, a one-page run sheet, a supply list, or a single section or part. Page breaks are yours to set.
+- **Beautiful print.** A full **series book** (cover, series at a glance, and for every week an opener page, the full lesson, and take-home cards), a single week's leader guide, take-home cards (two per page, cut in half), a run sheet with blanks for leader names, a supply checklist, or a single section or part. Scripts print with [stage cues] highlighted, discussion questions as numbered lists, and media links as scannable QR codes. Page breaks are yours to set.
 - **Your data stays yours.** Everything saves automatically in your browser. Export a file or back up everything, then import it on another device.
 
 ### AI assistant (optional, off by default)

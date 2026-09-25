@@ -95,8 +95,11 @@ export interface Database {
 }
 
 export type PrintScope =
+  | { kind: 'series-book'; seriesId: string }
   | { kind: 'series'; seriesId: string }
-  | { kind: 'guide' }
+  | { kind: 'series-takehome'; seriesId: string }
+  | { kind: 'guide'; takeHome?: boolean }
+  | { kind: 'takehome' }
   | { kind: 'run-sheet' }
   | { kind: 'supplies' }
   | { kind: 'section'; sectionId: string }
