@@ -7,6 +7,9 @@ import { weeksOf } from '../../lib/series';
 import { cueSegments, listItems, looksLikeList, paragraphs } from '../../lib/text';
 import { qrPath } from '../../lib/qr';
 import { useStore } from '../../store/StoreContext';
+import { Accessibility, Car, Layers, Compass, HelpCircle, ListChecks, MessageSquareQuote, Monitor, Moon, Package, Pointer, Quote, Sparkles, StickyNote, Sunrise, Target, Timer, Users, Utensils } from 'lucide-react';
+import { engagement, FAMILY_LABELS, familyCues, sectionsFor, smallGroupGuide } from '../../lib/roles';
+import { FamilyCues } from '../../types';
 import { partReady } from '../../lib/readiness';
 import './print.css';
 
@@ -54,16 +57,24 @@ export const PrintRoot: React.FC = () => {
   if (!printJob) return null;
   const { scope } = printJob;
 
-  if (scope.kind === 'series-book' || scope.kind === 'series' || scope.kind === 'series-takehome') {
+  if ('seriesId' in scope && scope.kind.startsWith('series')) {
     const series = db.series.find((s) => s.id === scope.seriesId);
     if (!series) return null;
     const weeks = weeksOf(db, series.id);
+    const footer: Record<string, string> = { 'series-small': 'Small group guides', 'series-family': 'Family pages', 'series-takehome': 'Take-home cards' };
     return (
       <div className="pr-root pr" style={vars(series.color)}>
-        <PageStyle footer={`${series.title} · Leader guide`} />
-        {scope.kind !== 'series-takehome' && <SeriesCover series={series} weeks={weeks} />}
-        {scope.kind !== 'series-takehome' && <SeriesGlance series={series} weeks={weeks} />}
-        {scope.kind === 'series-book' && weeks.map((w) => <WeekGuide key={w.id} service={w} series={series} takeHome />)}
+        <PageStyle footer={`${series.title} · ${footer[scope.kind] ?? 'Leader guide'}`} />
+        {(scope.kind === 'series-book' || scope.kind === 'series') && (
+          <>
+            <SeriesCover series={series} weeks={weeks} />
+            <Divider icon={Compass} kicker="Start here" title="Leader guide" sub={`${weeks.length} weeks · ${series.audience}`} />
+            <LeaderGuide series={series} weeks={weeks} />
+          </>
+        )}
+        {scope.kind === 'series-book' && weeks.map((w) => <FullWeek key={w.id} service={w} series={series} divider />)}
+        {scope.kind === 'series-small' && weeks.map((w) => <SmallGroupPage key={w.id} service={w} series={series} />)}
+        {scope.kind === 'series-family' && weeks.map((w) => <FamilyPage key={w.id} service={w} series={series} />)}
         {scope.kind === 'series-takehome' && weeks.map((w) => <TakeHome key={w.id} service={w} series={series} />)}
       </div>
     );
@@ -84,8 +95,14 @@ export const PrintRoot: React.FC = () => {
 const ServiceScope: React.FC<{ scope: PrintScope; service: Service; series?: Series }> = ({ scope, service, series }) => {
   const schedule = buildSchedule(service);
   switch (scope.kind) {
-    case 'guide':
-      return <WeekGuide service={service} series={series} takeHome={scope.takeHome} />;
+    case 'week':
+      return <FullWeek service={service} series={series} />;
+    case 'lesson':
+      return <Lesson service={service} series={series} />;
+    case 'small':
+      return <SmallGroupPage service={service} series={series} />;
+    case 'family':
+      return <FamilyPage service={service} series={series} />;
     case 'takehome':
       return <TakeHome service={service} series={series} />;
     case 'run-sheet':
@@ -127,18 +144,56 @@ const SeriesCover: React.FC<{ series: Series; weeks: Service[] }> = ({ series, w
   </section>
 );
 
-const SeriesGlance: React.FC<{ series: Series; weeks: Service[] }> = ({ series, weeks }) => (
-  <section className="pr-glance pr-page">
-    <p className="pr-eyebrow">Series at a glance</p>
-    <h1>{series.title}</h1>
-    {series.description && <p className="pr-glance-intro pr-serif">{series.description}</p>}
-    {(series.bigIdea || series.memoryVerse) && (
-      <div className="pr-glance-cards">
-        {series.bigIdea && <div className="pr-glance-card"><p className="pr-label">Theme</p><p className="pr-serif">{series.bigIdea}</p></div>}
-        {series.memoryVerse && <div className="pr-glance-card"><p className="pr-label">Memory verse</p><p className="pr-serif">{series.memoryVerse}</p></div>}
-      </div>
-    )}
-    <ol className="pr-weeks" style={{ marginTop: series.bigIdea || series.memoryVerse ? 0 : '18pt' }}>
+// Full-bleed section opener, like a chapter page.
+const Divider: React.FC<{ icon: React.ElementType; kicker: string; title: string; sub?: string; idea?: string }> = ({ icon: Icon, kicker, title, sub, idea }) => (
+  <section className="pr-divider">
+    <svg className="pr-divider-art" viewBox="0 0 850 1100" preserveAspectRatio="none" aria-hidden="true">
+      <circle cx="425" cy="550" r="330" fill="var(--c)" opacity="0.32" />
+      <circle cx="425" cy="550" r="430" fill="none" stroke="white" strokeOpacity="0.14" strokeWidth="2" />
+      <circle cx="700" cy="170" r="40" fill="white" opacity="0.08" />
+    </svg>
+    <div className="pr-divider-body">
+      <span className="pr-divider-icon"><Icon /></span>
+      <p className="pr-eyebrow">{kicker}</p>
+      <h2>{title}</h2>
+      {sub && <p className="pr-divider-sub">{sub}</p>}
+      {idea && <p className="pr-divider-idea pr-serif">{idea}</p>}
+    </div>
+  </section>
+);
+
+const LEGEND: [React.ElementType, string, string][] = [
+  [Target, 'Session aim', 'the one idea everything points to'],
+  [Timer, 'Time', 'approximate minutes for each part'],
+  [Pointer, 'Instructions', 'what the leader does'],
+  [MessageSquareQuote, 'Say', 'a script to read or put in your own words'],
+  [HelpCircle, 'Questions', 'to ask the group'],
+  [Monitor, 'Show on screen', 'scan the code to open the song or video'],
+  [Accessibility, 'Every kid can join', 'ways to adapt for different needs'],
+  [Layers, 'Going deeper', 'optional extras if you have time'],
+];
+
+const LeaderGuide: React.FC<{ series: Series; weeks: Service[] }> = ({ series, weeks }) => (
+  <section className="pr-leader pr-page">
+    <header className="pr-head">
+      <p className="pr-eyebrow">Start here</p>
+      <h1>Welcome, leader</h1>
+    </header>
+    {(series.leaderGuide || series.description) && <p className="pr-letter pr-serif">{series.leaderGuide || series.description}</p>}
+    <p className="pr-label" style={{ marginTop: '18pt' }}>Inside each week</p>
+    <div className="pr-roles">
+      <div><span className="pr-role-icon"><Sparkles /></span><b>Large group lesson</b><p>A session plan and overview, then the hook, teaching, and everything on stage, part by part.</p></div>
+      <div><span className="pr-role-icon"><Users /></span><b>Small group guide</b><p>One page for each small group leader: an icebreaker, discussion questions, and a prayer focus.</p></div>
+      <div><span className="pr-role-icon"><Sunrise /></span><b>Family page</b><p>Four everyday moments for parents to carry the lesson home. Copy one for each family.</p></div>
+    </div>
+    <p className="pr-label" style={{ marginTop: '20pt' }}>Symbols in use</p>
+    <div className="pr-legend">
+      {LEGEND.map(([Icon, name, text]) => (
+        <div key={name}><span className="pr-ico"><Icon /></span><p><b>{name}</b> {text}</p></div>
+      ))}
+    </div>
+    <p className="pr-label" style={{ marginTop: '20pt' }}>The series at a glance</p>
+    <ol className="pr-weeks">
       {weeks.map((w) => (
         <li key={w.id}>
           <span className="n">{pad2(w.week ?? 0)}</span>
@@ -153,109 +208,259 @@ const SeriesGlance: React.FC<{ series: Series; weeks: Service[] }> = ({ series, 
   </section>
 );
 
-// ---------- One week ----------
+// ---------- One week: lesson, small group guide, family page ----------
 
-const WeekGuide: React.FC<{ service: Service; series?: Series; takeHome?: boolean }> = ({ service, series, takeHome }) => {
+const FullWeek: React.FC<{ service: Service; series?: Series; divider?: boolean }> = ({ service, series, divider }) => (
+  <>
+    {divider && (
+      <Divider
+        icon={Compass}
+        kicker={series ? `${series.title} · ${formatDate(service.date)}` : formatDate(service.date)}
+        title={service.week ? `Week ${service.week}` : service.title}
+        sub={service.week ? service.title : service.scripture}
+        idea={service.bigIdea}
+      />
+    )}
+    <Lesson service={service} series={series} />
+    <SmallGroupPage service={service} series={series} />
+    <FamilyPage service={service} series={series} />
+  </>
+);
+
+const PageHead: React.FC<{ service: Service; series?: Series; kicker: string; title: string; right?: React.ReactNode }> = ({ service, series, kicker, title, right }) => (
+  <header className="pr-head pr-head-split">
+    <div>
+      <p className="pr-eyebrow">{series && service.week ? `Week ${service.week} · ` : ''}{kicker}</p>
+      <h1>{title}</h1>
+    </div>
+    {right}
+  </header>
+);
+
+// A labeled row with an icon in the left gutter, used across the lesson pages.
+const Row: React.FC<{ icon: React.ElementType; label: string; tone?: string; children: React.ReactNode }> = ({ icon: Icon, label, tone, children }) => (
+  <div className={`pr-row ${tone ?? ''}`}>
+    <span className="pr-ico"><Icon /></span>
+    <div className="pr-row-body">
+      <h4>{label}</h4>
+      {children}
+    </div>
+  </div>
+);
+
+const Lesson: React.FC<{ service: Service; series?: Series }> = ({ service, series }) => {
   const schedule = buildSchedule(service);
-  const sections = service.sections.filter((s) => !s.hidden && visibleParts(s).length > 0);
+  const main = sectionsFor(service, ['large', 'other']);
   return (
     <>
-      <WeekOpener service={service} series={series} schedule={schedule} />
-      <div className="pr-page">
-        {sections.map((section) => <SectionBlock key={section.id} service={service} section={section} schedule={schedule} />)}
+      <SessionPlan service={service} series={series} />
+      <SessionOverview service={service} series={series} schedule={schedule} />
+      <div className="pr-page pr-flow">
+        {main.map((section) => <SectionBlock key={section.id} service={service} section={section} schedule={schedule} />)}
       </div>
-      {takeHome && <TakeHome service={service} series={series} />}
     </>
   );
 };
 
-const WeekOpener: React.FC<{ service: Service; series?: Series; schedule: Record<string, string> }> = ({ service, series, schedule }) => {
+const SessionPlan: React.FC<{ service: Service; series?: Series }> = ({ service, series }) => {
+  const { activities, challenge } = engagement(service);
   const supplies = aggregateSupplies(service);
-  const sections = service.sections.filter((s) => !s.hidden && visibleParts(s).length > 0);
-  const parts = sections.reduce((n, s) => n + visibleParts(s).length, 0);
-  const shown = supplies.slice(0, 12);
-  const all = sections.flatMap(visibleParts);
-  const media = all.reduce((n, p) => n + p.media.filter((l) => l.url).length, 0);
-  const noScript = all.filter((p) => !partReady(p)).length;
+  const all = service.sections.filter((s) => !s.hidden).flatMap(visibleParts);
+  const media = all.flatMap((p) => p.media.filter((l) => l.url));
+  const objectives = listItems(service.objectives);
+  const notReady = all.filter((p) => !partReady(p)).length;
   const prep = [
-    service.scripture ? `Read ${service.scripture} twice` : 'Read this week\'s passage',
+    service.scripture ? `Read ${service.scripture} twice` : "Read this week's passage",
     'Read every script out loud once',
     supplies.length ? `Gather ${supplies.length} supply item${supplies.length === 1 ? '' : 's'}` : '',
-    media ? `Queue ${media} song${media === 1 ? '' : 's'} / video${media === 1 ? '' : 's'}` : '',
-    noScript ? `Finish ${noScript} part${noScript === 1 ? '' : 's'} without content` : '',
-    `Confirm ${service.groupCount} small group leader${service.groupCount === 1 ? '' : 's'}`,
+    media.length ? `Queue ${media.length} song${media.length === 1 ? '' : 's'} / video${media.length === 1 ? '' : 's'}` : '',
+    notReady ? `Finish ${notReady} part${notReady === 1 ? '' : 's'} that still need content` : '',
+    `Brief your ${service.groupCount} small group leader${service.groupCount === 1 ? '' : 's'}`,
   ].filter(Boolean);
   return (
-    <section className="pr-opener pr-page">
-      <div className="pr-opener-top">
-        <span className="pr-num">{service.week ? pad2(service.week) : '✦'}</span>
+    <section className="pr-plan pr-page">
+      <PageHead
+        service={service}
+        series={series}
+        kicker="Session plan"
+        title={service.title}
+        right={service.scripture && <div className="pr-head-right"><span>Scripture</span><b className="pr-serif">{service.scripture}</b></div>}
+      />
+      <div className="pr-plan-grid">
         <div>
-          <p className="pr-eyebrow">{series ? `${series.title} · Week ${service.week}` : `${service.audience} · Leader guide`}</p>
-          <h1>{service.title}</h1>
-          <p className="pr-sub">
-            <b>{formatDate(service.date)}</b>
-            {clockRange(service) && ` · ${clockRange(service)}`}
-            {service.scripture && <> · <b>{service.scripture}</b></>}
-          </p>
-        </div>
-      </div>
-
-      {service.bigIdea && (
-        <div className="pr-bigidea">
-          <p className="pr-label">Big idea</p>
-          <p className="pr-serif">{service.bigIdea}</p>
-        </div>
-      )}
-
-      <div className="pr-opener-grid" style={{ marginTop: service.bigIdea ? 0 : '18pt' }}>
-        <div>
-          {service.keyVerse && (
-            <figure className="pr-verse">
-              <span className="q">“</span>
-              <p className="pr-label" style={{ marginLeft: '18pt' }}>Key verse</p>
-              <blockquote className="pr-serif">{service.keyVerse}</blockquote>
-            </figure>
+          {service.bigIdea && <Row icon={Target} label="Session aim"><p className="pr-serif pr-aim">{service.bigIdea}</p></Row>}
+          {objectives.length > 0 && (
+            <Row icon={ListChecks} label="Objectives">
+              <p className="pr-row-lead">By the end of this session, {/kid|child|preschool/i.test(service.audience) ? 'kids' : 'students'} will:</p>
+              <ul className="pr-bullets">{objectives.map((o, i) => <li key={i}>{o}</li>)}</ul>
+            </Row>
           )}
-          <p className="pr-label">Run of service</p>
-          <ol className="pr-timeline">
-            {sections.map((s) => (
-              <li key={s.id}>
-                <span className="t">{schedule[s.id] ?? ''}</span>
-                <div className="b">
-                  <strong>{s.title}</strong><em>{sectionMinutes(s)} min</em>
-                  <p>{visibleParts(s).map((p) => p.title).join(' · ')}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-          <div className="pr-notes">
-            <p className="pr-label">Notes</p>
-            {Array.from({ length: 6 }, (_, i) => <div key={i} className="ln" />)}
-          </div>
+          <Row icon={Package} label="What you will need">
+            {supplies.length === 0 && media.length === 0 ? <p className="pr-row-lead">No supplies listed yet.</p> : (
+              <ul className="pr-checklist">
+                {supplies.map((l) => <li key={l.key}><span className="pr-box" /><span>{l.name}</span><span className="qty">{fmtQty(l.total)}</span></li>)}
+                {media.map((m) => <li key={m.id}><span className="pr-box" /><span>{m.label || 'Media'} <em className="pr-dim">(on screen)</em></span><span /></li>)}
+              </ul>
+            )}
+          </Row>
         </div>
         <aside>
-          <div className="pr-stats">
-            <div className="pr-stat"><b>{formatDuration(serviceMinutes(service))}</b><span>Length</span></div>
-            <div className="pr-stat"><b>{parts}</b><span>Parts</span></div>
-            <div className="pr-stat"><b>{service.classSize}</b><span>Kids</span></div>
-            <div className="pr-stat"><b>{service.groupCount}</b><span>Groups</span></div>
-          </div>
-          <p className="pr-label">Before you teach</p>
-          <ul className="pr-prep">
-            {prep.map((item, i) => <li key={i}><span className="pr-box" /><span>{item}</span></li>)}
-          </ul>
-          {shown.length > 0 && (
-            <>
-              <p className="pr-label">Gather</p>
-              <ul className="pr-checklist">
-                {shown.map((l) => (
-                  <li key={l.key}><span className="pr-box" /><span>{l.name}</span><span className="qty">{fmtQty(l.total)}</span></li>
-                ))}
-              </ul>
-              {supplies.length > shown.length && <p className="pr-more">+ {supplies.length - shown.length} more on the supply list</p>}
-            </>
+          {service.keyVerse && (
+            <div className="pr-side-verse">
+              <p className="pr-label">Key verse</p>
+              <p className="pr-serif">{service.keyVerse}</p>
+            </div>
           )}
+          {(activities.length > 0 || challenge) && (
+            <div className="pr-engage">
+              <p className="pr-label">Engagement</p>
+              {activities.slice(0, 3).map((a) => (
+                <div key={a.id} className="pr-engage-item">
+                  <b>{a.title}</b>
+                  <p>{clip(a.instructions.trim() ? listItems(a.instructions).join(' ') : a.script, 150)}</p>
+                </div>
+              ))}
+              {challenge && <div className="pr-engage-item challenge"><b>Challenge</b><p>{clip(challenge, 180)}</p></div>}
+            </div>
+          )}
+          <p className="pr-label">Before you teach</p>
+          <ul className="pr-prep">{prep.map((item, i) => <li key={i}><span className="pr-box" /><span>{item}</span></li>)}</ul>
+          <div className="pr-notes">
+            <p className="pr-label">Notes</p>
+            {Array.from({ length: 5 }, (_, i) => <div key={i} className="ln" />)}
+          </div>
         </aside>
+      </div>
+    </section>
+  );
+};
+
+// Every part at a glance with a blank column for the leader's own timing.
+const SessionOverview: React.FC<{ service: Service; series?: Series; schedule: Record<string, string> }> = ({ service, series, schedule }) => {
+  const sections = service.sections.filter((s) => !s.hidden && visibleParts(s).length > 0);
+  return (
+    <section className="pr-overview pr-page">
+      <PageHead service={service} series={series} kicker="Session overview" title={service.title} right={<div className="pr-head-right"><span>Total</span><b className="pr-serif">{formatDuration(serviceMinutes(service))}{clockRange(service) && ` · ${clockRange(service)}`}</b></div>} />
+      <table className="pr-ov">
+        <thead>
+          <tr><th /><th /><th>Part</th><th>Starts</th><th className="r">Approx.</th><th className="r">My time</th></tr>
+        </thead>
+        {sections.map((section) => {
+          const parts = visibleParts(section);
+          return (
+            <tbody key={section.id} className="pr-ov-group">
+              {parts.map((p, i) => {
+                const Icon = PART_TYPES[p.type].icon;
+                return (
+                  <tr key={p.id} className={p.optional ? 'opt' : ''}>
+                    {i === 0 && (
+                      <td rowSpan={parts.length} className="pr-ov-sec">
+                        <span>{section.title}</span>
+                      </td>
+                    )}
+                    <td className="box"><span className="pr-box" /></td>
+                    <td>
+                      <b>{p.optional && '⊕ '}{p.title}</b>
+                      <span className="pr-ov-type"><Icon /> {p.optional ? 'Going deeper' : PART_TYPES[p.type].label}</span>
+                    </td>
+                    <td className="t">{schedule[p.id] ?? '—'}</td>
+                    <td className="r"><Timer className="pr-ov-clock" /> {p.minutes} min</td>
+                    <td className="r"><span className="line" /></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          );
+        })}
+      </table>
+      <p className="pr-ov-foot">⊕ Going deeper parts are optional extras if you have time. They aren't counted in the run time.</p>
+    </section>
+  );
+};
+
+const SmallGroupPage: React.FC<{ service: Service; series?: Series }> = ({ service, series }) => {
+  const g = smallGroupGuide(service);
+  if (!g.has) return null;
+  return (
+    <section className="pr-sg pr-page">
+      <PageHead
+        service={service}
+        series={series}
+        kicker={series ? series.title : service.audience}
+        title="Small group guide"
+        right={<span className="pr-tag">{service.title}</span>}
+      />
+      {(service.bigIdea || service.keyVerse) && (
+        <div className="pr-sg-recap">
+          {service.bigIdea && <div><p className="pr-label">Today's big idea</p><p className="pr-serif">{service.bigIdea}</p></div>}
+          {service.keyVerse && <div><p className="pr-label">Key verse</p><p className="pr-serif">{service.keyVerse}</p></div>}
+        </div>
+      )}
+      <div className="pr-sg-grid">
+        <div>
+          {g.icebreaker && (
+            <div className="pr-sg-block">
+              <p className="pr-sg-kicker warm">Icebreaker</p>
+              <p className="pr-serif pr-sg-big">{g.icebreaker}</p>
+            </div>
+          )}
+          {g.prayer && (
+            <div className="pr-sg-block">
+              <p className="pr-sg-kicker">Prayer focus</p>
+              <p className="pr-serif pr-sg-big muted">{g.prayer}</p>
+            </div>
+          )}
+          {g.challenge && (
+            <div className="pr-sg-block">
+              <p className="pr-sg-kicker">This week's challenge</p>
+              <p className="pr-sg-small">{g.challenge}</p>
+            </div>
+          )}
+        </div>
+        {g.questions.length > 0 && (
+          <div className="pr-sg-questions">
+            <p className="pr-label">Discussion questions</p>
+            <ol>
+              {g.questions.map((q, i) => <li key={i}><span>{i + 1}</span><p>{q}</p></li>)}
+            </ol>
+          </div>
+        )}
+      </div>
+      {g.activities.map((a) => <PartBlock key={a.id} service={service} part={a} />)}
+    </section>
+  );
+};
+
+const FAMILY_ICONS: Record<keyof FamilyCues, React.ElementType> = { morning: Sunrise, onTheGo: Car, meal: Utensils, bedtime: Moon };
+
+const FamilyPage: React.FC<{ service: Service; series?: Series }> = ({ service, series }) => {
+  const cues = familyCues(service, series);
+  const keys = (Object.keys(FAMILY_LABELS) as (keyof FamilyCues)[]).filter((k) => cues[k]);
+  if (!keys.length) return null;
+  const verse = service.keyVerse || series?.memoryVerse;
+  return (
+    <section className="pr-family pr-page">
+      <header className="pr-family-head">
+        <p className="pr-eyebrow">{series ? `${series.title} · Week ${service.week}` : service.audience} · For families</p>
+        <h1>Everyday moments</h1>
+        <p className="pr-family-sub">This week your {/kid|child|preschool|k–5|k-5/i.test(service.audience) ? 'child' : 'student'} learned: <b>{service.title}</b></p>
+      </header>
+      {(service.bigIdea || verse) && (
+        <div className="pr-family-strip">
+          {service.bigIdea && <p className="pr-serif">{service.bigIdea}</p>}
+          {verse && <p className="pr-family-verse pr-serif">{verse}</p>}
+        </div>
+      )}
+      <div className="pr-family-grid">
+        {keys.map((k) => {
+          const Icon = FAMILY_ICONS[k];
+          return (
+            <div key={k} className={`pr-family-card ${k}`}>
+              <div className="pr-family-card-head"><span><Icon /></span><b>{FAMILY_LABELS[k].title}</b></div>
+              <p className="pr-serif">{cues[k]}</p>
+            </div>
+          );
+        })}
       </div>
     </section>
   );
@@ -264,20 +469,23 @@ const WeekOpener: React.FC<{ service: Service; series?: Series; schedule: Record
 const fmtQty = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
 const SectionBlock: React.FC<{ service: Service; section: Section; schedule: Record<string, string> }> = ({ service, section, schedule }) => (
-  <section className={`pr-section ${section.pageBreak ? 'pr-break-after' : ''}`}>
-    <header className="pr-section-head">
+  <section className={`pr-sec ${section.pageBreak ? 'pr-break-after' : ''}`}>
+    <header className="pr-sec-head">
+      <span className="rule" />
       <h2>{section.title}</h2>
-      {schedule[section.id] && <span className="t">{schedule[section.id]}</span>}
-      <span className="pr-pill">{sectionMinutes(section)} min</span>
+      <span className="rule" />
+      <span className="pr-sec-time"><Timer /> {sectionMinutes(section)} minutes</span>
     </header>
+    {schedule[section.id] && <p className="pr-sec-sub">Starts {schedule[section.id]}</p>}
     {visibleParts(section).map((part) => <PartBlock key={part.id} service={service} part={part} time={schedule[part.id]} />)}
   </section>
 );
 
 const Script: React.FC<{ text: string }> = ({ text }) => (
-  <div className="pr-script pr-serif">
+  <div className="pr-script">
+    <p className="pr-script-tag">« Script »</p>
     {paragraphs(text).map((para, i) => (
-      <p key={i}>
+      <p key={i} className="pr-serif">
         {cueSegments(para).map((seg, j) => (seg.cue ? <span key={j} className="pr-cue">{seg.text}</span> : <React.Fragment key={j}>{seg.text}</React.Fragment>))}
       </p>
     ))}
@@ -306,59 +514,49 @@ const PartBlock: React.FC<{ service: Service; part: Part; time?: string }> = ({ 
   const { label, icon: Icon } = PART_TYPES[part.type];
   const links = [...part.media, ...part.resources].filter((l) => /^https?:\/\//.test(l.url));
   const supplies = part.supplies.filter((s) => s.name.trim());
-  const isQuestions = part.type === 'discussion' && part.script.trim() && listItems(part.script).length > 1;
+  const isQuestions = (part.type === 'discussion' && listItems(part.script).length > 1) || (part.type === 'discussion' && part.script.trim().endsWith('?'));
   const isVerse = part.type === 'bible-verse' && part.script.trim() && part.script.length < 400;
   return (
-    <article className={`pr-part ${part.pageBreak ? 'pr-break-after' : ''}`}>
-      <div className="pr-part-head">
+    <article className={`pr-p ${part.optional ? 'deeper' : ''} ${part.pageBreak ? 'pr-break-after' : ''}`}>
+      {part.optional && <p className="pr-deeper-tag">Going deeper · optional</p>}
+      <div className="pr-p-head">
         <h3>{part.title}</h3>
         <span className="pr-type"><Icon /> {label}</span>
-        <span className="t">{time ? `${time} · ` : ''}{part.minutes} min</span>
+        <span className="t"><Timer /> {time ? `${time} · ` : ''}{part.minutes} min</span>
       </div>
       {supplies.length > 0 && (
-        <div className="pr-supplies">
-          {supplies.map((s) => <span key={s.id}><b>{fmtQty(supplyTotal(s, service))}</b> {s.name}</span>)}
-        </div>
+        <Row icon={Package} label="What you need">
+          <div className="pr-supplies">{supplies.map((s) => <span key={s.id}><b>{fmtQty(supplyTotal(s, service))}</b> {s.name}</span>)}</div>
+        </Row>
       )}
-      {part.instructions.trim() && (
-        <div className="pr-block">
-          <p className="pr-label">How to lead it</p>
-          <Steps text={part.instructions} />
-        </div>
-      )}
+      {part.instructions.trim() && <Row icon={Pointer} label="Instructions"><Steps text={part.instructions} /></Row>}
       {part.script.trim() && (
         isQuestions ? (
-          <div className="pr-block">
-            <p className="pr-label">Ask</p>
+          <Row icon={HelpCircle} label="Questions">
             <ol className="pr-questions">
               {listItems(part.script).map((q, i) => <li key={i}><span className="n">{i + 1}</span><p className="pr-serif">{q}</p></li>)}
             </ol>
-          </div>
+          </Row>
         ) : isVerse ? (
-          <div className="pr-bigverse pr-serif"><p>{part.script}</p></div>
+          <Row icon={Quote} label="Read together"><div className="pr-bigverse pr-serif"><p>{part.script}</p></div></Row>
         ) : (
-          <div className="pr-block">
-            <p className="pr-label">Say</p>
-            <Script text={part.script} />
-          </div>
+          <Row icon={MessageSquareQuote} label="Say"><Script text={part.script} /></Row>
         )
       )}
-      {(part.inclusionTips.trim() || part.leaderNotes.trim()) && (
-        <div className="pr-callouts">
-          {part.inclusionTips.trim() && <div className="pr-callout inclusion"><p className="pr-label">Every kid can join</p><Steps text={part.inclusionTips} /></div>}
-          {part.leaderNotes.trim() && <div className="pr-callout note"><p className="pr-label">Leader note</p><Steps text={part.leaderNotes} /></div>}
-        </div>
-      )}
       {links.length > 0 && (
-        <div className="pr-links">
-          {links.map((l) => (
-            <div key={l.id} className="pr-link">
-              <QR url={l.url} />
-              <div><b>{l.label || 'Scan to open'}</b><span>{l.url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 60)}</span></div>
-            </div>
-          ))}
-        </div>
+        <Row icon={Monitor} label="Show on screen">
+          <div className="pr-links">
+            {links.map((l) => (
+              <div key={l.id} className="pr-link">
+                <QR url={l.url} />
+                <div><b>{l.label || 'Scan to open'}</b><span>{l.url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 60)}</span></div>
+              </div>
+            ))}
+          </div>
+        </Row>
       )}
+      {part.inclusionTips.trim() && <Row icon={Accessibility} label="Every kid can join" tone="inclusion"><Steps text={part.inclusionTips} /></Row>}
+      {part.leaderNotes.trim() && <Row icon={StickyNote} label="Leader note" tone="note"><Steps text={part.leaderNotes} /></Row>}
     </article>
   );
 };

@@ -2,8 +2,11 @@ import { Section, Service } from '../types';
 
 export const visibleParts = (section: Section) => (section.hidden ? [] : section.parts.filter((p) => !p.hidden));
 
+// Optional ("going deeper") parts print but don't count toward the run time.
+const timedParts = (section: Section) => visibleParts(section).filter((p) => !p.optional);
+
 export const sectionMinutes = (section: Section) =>
-  visibleParts(section).reduce((total, p) => total + (p.minutes || 0), 0);
+  timedParts(section).reduce((total, p) => total + (p.minutes || 0), 0);
 
 export const serviceMinutes = (service: Service) =>
   service.sections.reduce((total, s) => total + sectionMinutes(s), 0);
@@ -36,7 +39,7 @@ export const buildSchedule = (service: Service): Record<string, string> => {
     if (section.hidden) continue;
     times[section.id] = formatClock(clock);
     for (const part of section.parts) {
-      if (part.hidden) continue;
+      if (part.hidden || part.optional) continue;
       times[part.id] = formatClock(clock);
       clock += part.minutes || 0;
     }

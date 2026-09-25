@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { ArrowLeft, Clock, Copy, Download, FileText, LayoutList, Package, Plus, Printer, Scissors, Trash2, Users } from 'lucide-react';
+import { ArrowLeft, BookOpen, Clock, Copy, Download, FileText, LayoutList, Package, Plus, Printer, Scissors, Sunrise, Trash2, Users } from 'lucide-react';
 import { Part, Section, Service } from '../types';
 import { cloneSection, clonePart, cloneService, newSection } from '../lib/factory';
 import { COLOR_CLASSES } from '../lib/series';
@@ -146,9 +146,12 @@ export const ServiceEditor: React.FC<{ serviceId: string; focusPartId?: string }
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Menu trigger={<Button type="button" icon={Printer}>Print</Button>}>
-            <MenuItem icon={FileText} onClick={() => print(service.id, { kind: 'guide' })}>Leader guide</MenuItem>
-            <MenuItem icon={FileText} onClick={() => print(service.id, { kind: 'guide', takeHome: true })}>Leader guide + take-home cards</MenuItem>
-            <MenuItem icon={Scissors} onClick={() => print(service.id, { kind: 'takehome' })}>Take-home cards</MenuItem>
+            <MenuItem icon={BookOpen} onClick={() => print(service.id, { kind: 'week' })}>Full week (lesson, small group, family)</MenuItem>
+            <MenuItem icon={FileText} onClick={() => print(service.id, { kind: 'lesson' })}>Large group lesson</MenuItem>
+            <MenuItem icon={Users} onClick={() => print(service.id, { kind: 'small' })}>Small group guide</MenuItem>
+            <MenuItem icon={Sunrise} onClick={() => print(service.id, { kind: 'family' })}>Family page</MenuItem>
+            <MenuItem icon={Scissors} onClick={() => print(service.id, { kind: 'takehome' })}>Take-home cards (2 per page)</MenuItem>
+            <MenuDivider />
             <MenuItem icon={LayoutList} onClick={() => print(service.id, { kind: 'run-sheet' })}>Run sheet (times only)</MenuItem>
             <MenuItem icon={Package} onClick={() => print(service.id, { kind: 'supplies' })}>Supply list</MenuItem>
           </Menu>

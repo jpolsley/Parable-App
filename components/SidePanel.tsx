@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { ExternalLink, Link as LinkIcon, Package, Printer, ScrollText, Sparkles } from 'lucide-react';
-import { Service } from '../types';
+import { FamilyCues, Service } from '../types';
 import { aggregateSupplies } from '../lib/supplies';
 import { visibleParts } from '../lib/time';
-import { askAboutService } from '../services/aiService';
+import { askAboutService, draftFamilyCue, draftObjectives, ServiceWithSeries } from '../services/aiService';
+import { FAMILY_LABELS, familyCues } from '../lib/roles';
+import { newFamily } from '../lib/factory';
+import { AIAssist } from './AIAssist';
 import { useStore } from '../store/StoreContext';
 import { Button, EmptyState, Label, TextArea, inputClass } from './ui';
 
-type Tab = 'details' | 'supplies' | 'media' | 'script' | 'ai';
+type Tab = 'details' | 'family' | 'supplies' | 'media' | 'script' | 'ai';
 
 interface SidePanelProps {
   service: Service;
@@ -20,6 +23,7 @@ export const SidePanel: React.FC<SidePanelProps> = ({ service, update, onJumpToP
   const [tab, setTab] = useState<Tab>('details');
   const tabs: { id: Tab; label: string }[] = [
     { id: 'details', label: 'Details' },
+    { id: 'family', label: 'Family' },
     { id: 'supplies', label: 'Supplies' },
     { id: 'media', label: 'Media' },
     { id: 'script', label: 'Script' },
@@ -44,6 +48,7 @@ export const SidePanel: React.FC<SidePanelProps> = ({ service, update, onJumpToP
       </div>
       <div className="p-4 overflow-y-auto">
         {tab === 'details' && <Details service={service} update={update} />}
+        {tab === 'family' && <Family service={service} update={update} />}
         {tab === 'supplies' && <Supplies service={service} update={update} />}
         {tab === 'media' && <Media service={service} />}
         {tab === 'script' && <Script service={service} onJumpToPart={onJumpToPart} />}
@@ -54,7 +59,7 @@ export const SidePanel: React.FC<SidePanelProps> = ({ service, update, onJumpToP
 };
 
 const Details: React.FC<{ service: Service; update: (fn: (s: Service) => Service) => void }> = ({ service, update }) => {
-  const { db, moveToSeries } = useStore();
+  const { db, moveToSeries, aiSettings } = useStore();
   const set = <K extends keyof Service>(key: K, value: Service[K]) => update((s) => ({ ...s, [key]: value }));
   const inSeries = !!service.seriesId;
   return (
@@ -94,6 +99,18 @@ const Details: React.FC<{ service: Service; update: (fn: (s: Service) => Service
         <TextArea id="d-big" minRows={2} value={service.bigIdea} onChange={(e) => set('bigIdea', e.target.value)} placeholder="The one thing every kid should walk away with" />
       </div>
       <div>
+        <Label htmlFor="d-obj">Objectives</Label>
+        <TextArea id="d-obj" minRows={3} value={service.objectives} onChange={(e) => set('objectives', e.target.value)} placeholder={'One per line, e.g.\nKnow that God made a way through the sea\nName one place they need to trust God'} />
+        <div className="mt-1.5">
+          <AIAssist
+            label={service.objectives ? 'Improve with AI' : 'Draft with AI'}
+            hasExisting={!!service.objectives.trim()}
+            run={(instruction) => draftObjectives(aiSettings, service, instruction)}
+            onApply={(text, mode) => update((s) => ({ ...s, objectives: mode === 'append' && s.objectives ? `${s.objectives}\n${text}` : text }))}
+          />
+        </div>
+      </div>
+      <div>
         <Label htmlFor="d-scr">Scripture</Label>
         <input id="d-scr" className={inputClass} value={service.scripture} onChange={(e) => set('scripture', e.target.value)} placeholder="e.g. Exodus 16" />
       </div>
@@ -101,6 +118,36 @@ const Details: React.FC<{ service: Service; update: (fn: (s: Service) => Service
         <Label htmlFor="d-kv">Key verse</Label>
         <TextArea id="d-kv" minRows={2} value={service.keyVerse} onChange={(e) => set('keyVerse', e.target.value)} />
       </div>
+    </div>
+  );
+};
+
+const Family: React.FC<{ service: Service; update: (fn: (s: Service) => Service) => void }> = ({ service, update }) => {
+  const { aiSettings } = useStore();
+  const fallback = familyCues({ ...service, family: newFamily() }, (service as ServiceWithSeries).seriesInfo);
+  return (
+    <div className="space-y-5">
+      <p className="text-sm text-gray-500">Four everyday moments for parents, printed on the family page. Leave one blank to use the suggestion shown.</p>
+      {(Object.keys(FAMILY_LABELS) as (keyof FamilyCues)[]).map((key) => (
+        <div key={key}>
+          <Label htmlFor={`fam-${key}`}>{FAMILY_LABELS[key].title}</Label>
+          <TextArea
+            id={`fam-${key}`}
+            minRows={2}
+            value={service.family[key]}
+            placeholder={fallback[key] || FAMILY_LABELS[key].hint}
+            onChange={(e) => update((s) => ({ ...s, family: { ...s.family, [key]: e.target.value } }))}
+          />
+          <div className="mt-1.5">
+            <AIAssist
+              label={service.family[key] ? 'Improve with AI' : 'Draft with AI'}
+              hasExisting={!!service.family[key].trim()}
+              run={(instruction) => draftFamilyCue(aiSettings, service, key, instruction)}
+              onApply={(text, mode) => update((s) => ({ ...s, family: { ...s.family, [key]: mode === 'append' && s.family[key] ? `${s.family[key]}\n\n${text}` : text } }))}
+            />
+          </div>
+        </div>
+      ))}
     </div>
   );
 };

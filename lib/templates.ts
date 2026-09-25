@@ -25,7 +25,7 @@ export const TEMPLATES: ServiceTemplate[] = [
       { title: 'Social', parts: [['Welcome Game', 'game', 10], ['Welcome & Big Idea', 'script', 5]] },
       { title: 'Worship', parts: [['Worship Opener', 'script', 3], ['Song 1', 'worship', 4], ['Song 2', 'worship', 4], ['Memory Verse', 'bible-verse', 5]] },
       { title: 'Bible Story', parts: [['Intro Sketch', 'script', 5], ['Bible Story', 'bible-story', 15], ['Prayer', 'prayer', 3]] },
-      { title: 'Small Groups', parts: [['Group Activity', 'group-activity', 15], ['Discussion', 'discussion', 10], ['Prayer & Pickup', 'prayer', 5]] },
+      { title: 'Small Groups', parts: [['Icebreaker', 'discussion', 5], ['Group Activity', 'group-activity', 10], ['Discussion', 'discussion', 10], ['Prayer Focus', 'prayer', 5]] },
     ],
   },
   {
@@ -36,7 +36,7 @@ export const TEMPLATES: ServiceTemplate[] = [
       { title: 'Hangout', parts: [['Game', 'game', 15], ['Announcements', 'announcement', 5]] },
       { title: 'Worship', parts: [['Worship Set', 'worship', 20]] },
       { title: 'Message', parts: [['Hook', 'script', 5], ['Teaching', 'bible-story', 20], ['Response', 'prayer', 5]] },
-      { title: 'Small Groups', parts: [['Discussion', 'discussion', 20], ['Weekly Challenge', 'script', 5]] },
+      { title: 'Small Groups', parts: [['Icebreaker', 'discussion', 5], ['Discussion', 'discussion', 15], ['Prayer Focus', 'prayer', 5], ['Weekly Challenge', 'script', 5]] },
     ],
   },
   {

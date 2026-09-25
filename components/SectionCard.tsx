@@ -4,12 +4,13 @@ import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, v
 import { restrictToVerticalAxis } from './dndModifiers';
 import { CSS } from '@dnd-kit/utilities';
 import {
-  Bookmark, ChevronDown, ChevronRight, Copy, Eye, EyeOff, GripVertical, Plus, Printer, SeparatorHorizontal, Sparkles, Trash2,
+  Bookmark, Check, ChevronDown, ChevronRight, Copy, Eye, EyeOff, GripVertical, Plus, Printer, SeparatorHorizontal, Sparkles, Trash2,
 } from 'lucide-react';
 import { Part, PartType, Section, Service } from '../types';
 import { newPart } from '../lib/factory';
 import { PART_TYPES, PART_TYPE_KEYS } from '../lib/partTypes';
 import { formatDuration, sectionMinutes } from '../lib/time';
+import { ROLE_LABELS } from '../lib/roles';
 import { suggestParts } from '../services/aiService';
 import { useStore } from '../store/StoreContext';
 import { PartCard, TypeChip } from './PartCard';
@@ -80,6 +81,20 @@ export const SectionCard: React.FC<SectionCardProps> = ({ service, section, sche
           aria-label="Section title"
           className="flex-1 min-w-0 bg-transparent font-display text-xl px-1 py-0.5 rounded focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent/20"
         />
+        <Menu
+          trigger={
+            <button type="button" title="Who this section is for (sets where it prints)" className={`hidden sm:inline-flex text-[11px] font-semibold rounded-full px-2 py-0.5 whitespace-nowrap ${ROLE_TONE[section.role]}`}>
+              {ROLE_LABELS[section.role]}
+            </button>
+          }
+        >
+          {(Object.keys(ROLE_LABELS) as Section['role'][]).map((role) => (
+            <MenuItem key={role} icon={role === section.role ? Check : undefined} onClick={() => update((s) => ({ ...s, role }))}>
+              {ROLE_LABELS[role]}
+              <span className="block text-xs text-gray-400">{ROLE_HINT[role]}</span>
+            </MenuItem>
+          ))}
+        </Menu>
         {schedule[section.id] && <span className="hidden sm:inline font-mono text-xs text-gray-500">{schedule[section.id]}</span>}
         <span className="text-xs font-semibold bg-ink text-white rounded-full px-2.5 py-1 whitespace-nowrap">{formatDuration(minutes)}</span>
         <IconButton icon={section.hidden ? EyeOff : Eye} label={section.hidden ? 'Show section' : 'Hide section'} onClick={() => update((s) => ({ ...s, hidden: !s.hidden }))} />
@@ -137,6 +152,18 @@ export const SectionCard: React.FC<SectionCardProps> = ({ service, section, sche
       <SuggestPartsModal open={aiOpen} onClose={() => setAiOpen(false)} service={service} section={section} onAdd={(parts) => actions.addParts(section.id, parts)} />
     </div>
   );
+};
+
+const ROLE_TONE: Record<Section['role'], string> = {
+  large: 'bg-accent-soft text-accent',
+  small: 'bg-emerald-50 text-emerald-700',
+  other: 'bg-gray-100 text-gray-600',
+};
+
+const ROLE_HINT: Record<Section['role'], string> = {
+  large: 'Prints in the large group lesson',
+  small: 'Prints on the small group guide',
+  other: 'Arrival, games, announcements',
 };
 
 const AISuggestButton: React.FC<{ onClick: () => void }> = ({ onClick }) => {

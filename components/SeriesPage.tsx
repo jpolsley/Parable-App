@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ArrowLeft, BookOpen, CalendarDays, Copy, Download, FileText, GripVertical, Layers, Plus, Printer, Scissors, Trash2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, CalendarDays, Copy, Download, FileText, GripVertical, Layers, Plus, Printer, Scissors, Sunrise, Trash2, Users } from 'lucide-react';
 import { Service } from '../types';
 import { cloneService, newSeries, todayISO } from '../lib/factory';
 import { downloadJson, slug } from '../lib/files';
@@ -84,7 +84,9 @@ export const SeriesPage: React.FC<{ seriesId: string }> = ({ seriesId }) => {
             <Button icon={Plus} onClick={() => setAddOpen(true)}>Add week</Button>
             <Menu trigger={<Button variant="outline" icon={Printer}>Print</Button>}>
               <MenuItem icon={BookOpen} onClick={() => print('', { kind: 'series-book', seriesId: series.id })}>Series book (everything)</MenuItem>
-              <MenuItem icon={FileText} onClick={() => print('', { kind: 'series', seriesId: series.id })}>Cover + overview</MenuItem>
+              <MenuItem icon={FileText} onClick={() => print('', { kind: 'series', seriesId: series.id })}>Cover + leader guide</MenuItem>
+              <MenuItem icon={Users} onClick={() => print('', { kind: 'series-small', seriesId: series.id })}>All small group guides</MenuItem>
+              <MenuItem icon={Sunrise} onClick={() => print('', { kind: 'series-family', seriesId: series.id })}>All family pages</MenuItem>
               <MenuItem icon={Scissors} onClick={() => print('', { kind: 'series-takehome', seriesId: series.id })}>All take-home cards</MenuItem>
             </Menu>
             <Menu label="Series actions">
@@ -160,6 +162,10 @@ export const SeriesPage: React.FC<{ seriesId: string }> = ({ seriesId }) => {
             <div>
               <Label htmlFor="sd-mv">Memory verse</Label>
               <TextArea id="sd-mv" minRows={2} value={series.memoryVerse} onChange={(e) => set('memoryVerse', e.target.value)} placeholder="Verse text (reference)" />
+            </div>
+            <div>
+              <Label htmlFor="sd-lg">Leader guide</Label>
+              <TextArea id="sd-lg" minRows={4} value={series.leaderGuide} onChange={(e) => set('leaderGuide', e.target.value)} placeholder="A welcome letter to your leaders. It opens the printed series book." />
             </div>
             <div>
               <Label htmlFor="sd-desc">Description</Label>
