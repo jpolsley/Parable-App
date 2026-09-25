@@ -1,5 +1,5 @@
-import { Part, Section, Service, Supply } from '../types';
-import { addDays, newPart, newSection, newService, newSupply } from '../lib/factory';
+import { Part, Section, Series, Service, Supply } from '../types';
+import { newPart, newSection, newSeries, newService, newSupply } from '../lib/factory';
 import { PART_TYPE_KEYS, PART_TYPES } from '../lib/partTypes';
 import { AISettings } from './aiSettings';
 
@@ -81,10 +81,16 @@ export const testConnection = async (settings: AISettings): Promise<string> => {
 
 // ---------- Context ----------
 
-export const describeService = (service: Service, focusPartId?: string) => {
+// A service plus the series it belongs to, so AI drafts fit the series theme.
+export type ServiceWithSeries = Service & { seriesInfo?: Series };
+
+export const describeService = (service: ServiceWithSeries, focusPartId?: string) => {
+  const series = service.seriesInfo;
   const lines = [
     `Service: "${service.title}" for ${service.audience}.`,
-    service.series && `Series: ${service.series}${service.week ? `, week ${service.week}` : ''}.`,
+    series && `Series: "${series.title}"${service.week ? `, week ${service.week}` : ''}.${series.description ? ` ${series.description}` : ''}`,
+    series?.bigIdea && `Series theme: ${series.bigIdea}`,
+    series?.memoryVerse && `Series memory verse: ${series.memoryVerse}`,
     service.bigIdea && `Big idea: ${service.bigIdea}`,
     service.scripture && `Scripture: ${service.scripture}`,
     service.keyVerse && `Key verse: ${service.keyVerse}`,
@@ -150,17 +156,18 @@ export const suggestParts = async (settings: AISettings, service: Service, secti
 
 export const draftService = async (
   settings: AISettings,
-  params: { topic: string; audience: string; skeleton: Section[] },
+  params: { topic: string; audience: string; skeleton: Section[]; series?: Series },
 ): Promise<Pick<Service, 'title' | 'bigIdea' | 'keyVerse' | 'scripture' | 'sections'>> => {
   const skeleton = params.skeleton.length
     ? `Use exactly this structure, filling in every part:\n${params.skeleton.map((s) => `- ${s.title}: ${s.parts.map((p) => `${p.title} (${p.type}, ${p.minutes} min)`).join('; ')}`).join('\n')}`
     : 'Design 3–5 sections with 1–4 parts each, totaling about 75–90 minutes.';
   const result = await chatJson<Record<string, unknown>>(settings, [
     `Create a complete ministry service about "${params.topic}" for ${params.audience}.`,
+    params.series && `It is one week of the series "${params.series.title}".${params.series.bigIdea ? ` Series theme: ${params.series.bigIdea}` : ''}`,
     skeleton,
     `Respond as {"title":"...","bigIdea":"one sentence","scripture":"reference","keyVerse":"verse text (reference)","sections":[{"title":"...","parts":[${PART_SHAPE}]}]}.`,
     'Write full scripts and instructions a volunteer can use directly.',
-  ].join('\n'));
+  ].filter(Boolean).join('\n'));
   const service = newService({ ...result, sections: Array.isArray(result.sections) ? result.sections : [] });
   return { title: service.title, bigIdea: service.bigIdea, keyVerse: service.keyVerse, scripture: service.scripture, sections: service.sections };
 };
@@ -187,16 +194,25 @@ interface WeekDetail {
 
 export const draftSeries = async (
   settings: AISettings,
-  params: { topic: string; audience: string; weeks: number; startDate: string },
+  params: { topic: string; audience: string; weeks: number; startDate: string; title?: string; color?: Series['color'] },
   onProgress: (message: string) => void,
-): Promise<Service[]> => {
+): Promise<{ series: Series; weeks: Service[] }> => {
   onProgress('Outlining the series…');
-  const outline = await chatJson<{ title?: string; weeks?: WeekOutline[] }>(settings, [
+  const outline = await chatJson<{ title?: string; description?: string; bigIdea?: string; memoryVerse?: string; weeks?: WeekOutline[] }>(settings, [
     `Outline a ${params.weeks}-week ministry series about "${params.topic}" for ${params.audience}.`,
     'Fit the topic into the larger story of the Bible.',
-    `Respond as {"title":"series title","weeks":[{"title":"...","scripture":"reference","bigIdea":"one sentence"}]} with exactly ${params.weeks} weeks.`,
+    `Respond as {"title":"series title","description":"2-sentence series overview","bigIdea":"the one idea that ties the series together","memoryVerse":"verse text (reference)","weeks":[{"title":"...","scripture":"reference","bigIdea":"one sentence"}]} with exactly ${params.weeks} weeks.`,
   ].join('\n'));
-  const seriesTitle = outline.title || params.topic;
+  const series = newSeries({
+    title: params.title || outline.title || params.topic,
+    description: outline.description,
+    bigIdea: outline.bigIdea,
+    memoryVerse: outline.memoryVerse,
+    audience: params.audience,
+    startDate: params.startDate,
+    color: params.color,
+  });
+  const seriesTitle = series.title;
   const weeks = (outline.weeks ?? []).slice(0, params.weeks);
   if (!weeks.length) throw new Error('The AI did not return any weeks.');
 
@@ -211,10 +227,9 @@ export const draftSeries = async (
     const questions = (d.discussionQuestions ?? []).map((q, n) => `${n + 1}. ${q}`).join('\n');
     services.push(newService({
       title: week.title || `Week ${i + 1}`,
-      series: seriesTitle,
+      seriesId: series.id,
       week: i + 1,
       audience: params.audience,
-      date: addDays(params.startDate, 7 * i),
       bigIdea: week.bigIdea,
       scripture: week.scripture,
       keyVerse: d.keyVerse,
@@ -239,5 +254,5 @@ export const draftSeries = async (
       ],
     }));
   }
-  return services;
+  return { series, weeks: services };
 };

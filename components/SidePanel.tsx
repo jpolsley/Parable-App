@@ -27,7 +27,7 @@ export const SidePanel: React.FC<SidePanelProps> = ({ service, update, onJumpToP
   ];
 
   return (
-    <aside className="bg-white border-2 border-gray-200 rounded-xl flex flex-col lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]">
+    <aside className="bg-white border border-line rounded-xl flex flex-col lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]">
       <div role="tablist" className="flex gap-1 overflow-x-auto border-b border-gray-200 px-2 shrink-0">
         {tabs.map((t) => (
           <button
@@ -36,7 +36,7 @@ export const SidePanel: React.FC<SidePanelProps> = ({ service, update, onJumpToP
             type="button"
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
-            className={`px-3 py-3 text-sm whitespace-nowrap border-b-2 -mb-px ${tab === t.id ? 'border-black font-semibold' : 'border-transparent text-gray-500 hover:text-black'}`}
+            className={`px-3 py-3 text-sm whitespace-nowrap border-b-2 -mb-px ${tab === t.id ? 'border-accent text-accent font-semibold' : 'border-transparent text-gray-500 hover:text-ink'}`}
           >
             {t.label}
           </button>
@@ -54,13 +54,23 @@ export const SidePanel: React.FC<SidePanelProps> = ({ service, update, onJumpToP
 };
 
 const Details: React.FC<{ service: Service; update: (fn: (s: Service) => Service) => void }> = ({ service, update }) => {
+  const { db, moveToSeries } = useStore();
   const set = <K extends keyof Service>(key: K, value: Service[K]) => update((s) => ({ ...s, [key]: value }));
+  const inSeries = !!service.seriesId;
   return (
     <div className="space-y-4">
+      <div>
+        <Label htmlFor="d-series">Series</Label>
+        <select id="d-series" className={inputClass} value={service.seriesId ?? ''} onChange={(e) => moveToSeries(service.id, e.target.value || null)}>
+          <option value="">None (stand-alone)</option>
+          {db.series.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
+        </select>
+        {inSeries && <p className="text-xs text-gray-500 mt-1">Week {service.week}. The date follows the series schedule; change it on the series page.</p>}
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label htmlFor="d-date">Date</Label>
-          <input id="d-date" type="date" className={inputClass} value={service.date} onChange={(e) => set('date', e.target.value)} />
+          <input id="d-date" type="date" className={`${inputClass} disabled:bg-gray-50 disabled:text-gray-500`} value={service.date} disabled={inSeries} onChange={(e) => set('date', e.target.value)} />
         </div>
         <div>
           <Label htmlFor="d-start">Start time</Label>
@@ -78,16 +88,6 @@ const Details: React.FC<{ service: Service; update: (fn: (s: Service) => Service
       <div>
         <Label htmlFor="d-aud">Audience</Label>
         <input id="d-aud" className={inputClass} value={service.audience} onChange={(e) => set('audience', e.target.value)} placeholder="e.g. Kids K–5, Preschool, Middle School" />
-      </div>
-      <div className="grid grid-cols-[1fr_80px] gap-3">
-        <div>
-          <Label htmlFor="d-series">Series</Label>
-          <input id="d-series" className={inputClass} value={service.series} onChange={(e) => set('series', e.target.value)} placeholder="Optional" />
-        </div>
-        <div>
-          <Label htmlFor="d-week">Week</Label>
-          <input id="d-week" type="number" min={1} className={inputClass} value={service.week ?? ''} onChange={(e) => set('week', e.target.value ? Number(e.target.value) : null)} />
-        </div>
       </div>
       <div>
         <Label htmlFor="d-big">Big idea</Label>
@@ -125,7 +125,7 @@ const Supplies: React.FC<{ service: Service; update: (fn: (s: Service) => Servic
         {lines.map((l) => (
           <li key={l.key}>
             <label className="flex gap-3 items-start p-2 rounded-md hover:bg-gray-50 cursor-pointer">
-              <input type="checkbox" className="mt-1 w-4 h-4 accent-black" checked={checked.has(l.key)} onChange={() => toggle(l.key)} />
+              <input type="checkbox" className="mt-1 w-4 h-4 accent-indigo-600" checked={checked.has(l.key)} onChange={() => toggle(l.key)} />
               <span className={`flex-1 ${checked.has(l.key) ? 'line-through text-gray-400' : ''}`}>
                 <span className="font-medium">{l.name}</span>
                 <span className="block text-xs text-gray-500">{l.sources.join(', ')}</span>

@@ -4,6 +4,7 @@ import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSo
 import { ArrowLeft, Clock, Copy, Download, FileText, LayoutList, Package, Plus, Printer, Trash2, Users } from 'lucide-react';
 import { Part, Section, Service } from '../types';
 import { cloneSection, clonePart, cloneService, newSection } from '../lib/factory';
+import { COLOR_CLASSES } from '../lib/series';
 import { buildSchedule, formatDate, formatDuration, serviceMinutes } from '../lib/time';
 import { downloadJson, slug } from '../lib/files';
 import { navigate } from '../lib/route';
@@ -14,8 +15,11 @@ import { SidePanel } from './SidePanel';
 import { Button, EmptyState, Menu, MenuDivider, MenuItem } from './ui';
 
 export const ServiceEditor: React.FC<{ serviceId: string; focusPartId?: string }> = ({ serviceId, focusPartId }) => {
-  const { db, updateService, addServices, deleteService, toast, print } = useStore();
-  const service = db.services.find((s) => s.id === serviceId);
+  const { db, updateService, addServices, addWeeks, deleteService, toast, print } = useStore();
+  const found = db.services.find((s) => s.id === serviceId);
+  const series = found?.seriesId ? db.series.find((s) => s.id === found.seriesId) : undefined;
+  // Carry the series along so AI helpers can match the series theme.
+  const service = useMemo(() => (found ? { ...found, seriesInfo: series } : undefined), [found, series]);
   const [openPartIds, setOpenPartIds] = useState<Set<string>>(() => new Set(focusPartId ? [focusPartId] : []));
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -36,7 +40,7 @@ export const ServiceEditor: React.FC<{ serviceId: string; focusPartId?: string }
     return (
       <div className="max-w-xl mx-auto py-20">
         <EmptyState icon={FileText} title="Service not found">
-          It may have been deleted. <button className="underline" onClick={() => navigate('/services')}>Back to services</button>
+          It may have been deleted. <button className="underline" onClick={() => navigate('/series')}>Back to series</button>
         </EmptyState>
       </div>
     );
@@ -95,8 +99,10 @@ export const ServiceEditor: React.FC<{ serviceId: string; focusPartId?: string }
   const addSection = () => mapSections((secs) => [...secs, newSection({ title: 'New section' })]);
   const allCollapsed = service.sections.length > 0 && service.sections.every((s) => s.collapsed);
   const duplicate = () => {
-    const copy = cloneService(service, { title: `${service.title} (copy)`, checkedSupplies: [] });
-    addServices([copy]);
+    const { seriesInfo: _, ...plain } = service;
+    const copy = cloneService(plain, { title: `${service.title} (copy)`, checkedSupplies: [] });
+    if (series) addWeeks(series.id, [copy]);
+    else addServices([copy]);
     navigate(`/s/${copy.id}`);
     toast('Service duplicated');
   };
@@ -109,10 +115,17 @@ export const ServiceEditor: React.FC<{ serviceId: string; focusPartId?: string }
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-6 pb-24">
       <div className="flex items-center gap-2 text-sm text-gray-500 py-3">
-        <button type="button" onClick={() => navigate('/services')} className="inline-flex items-center gap-1 hover:text-black">
-          <ArrowLeft className="w-4 h-4" /> Services
+        <button type="button" onClick={() => navigate('/series')} className="inline-flex items-center gap-1 hover:text-ink">
+          <ArrowLeft className="w-4 h-4" /> Series
         </button>
-        {service.series && <><span>/</span><span className="truncate">{service.series}</span></>}
+        {series && (
+          <>
+            <span>/</span>
+            <button type="button" onClick={() => navigate(`/series/${series.id}`)} className="inline-flex items-center gap-1.5 truncate hover:text-ink">
+              <span className={`w-2 h-2 rounded-full ${COLOR_CLASSES[series.color].dot}`} />{series.title}
+            </button>
+          </>
+        )}
       </div>
 
       <header className="flex flex-col md:flex-row md:items-end gap-4 mb-6">
@@ -121,13 +134,13 @@ export const ServiceEditor: React.FC<{ serviceId: string; focusPartId?: string }
             value={service.title}
             onChange={(e) => update((s) => ({ ...s, title: e.target.value }))}
             aria-label="Service title"
-            className="w-full bg-transparent font-serif text-3xl md:text-4xl leading-tight rounded px-1 -mx-1 focus:bg-white focus:outline-none focus:ring-2 focus:ring-black/10"
+            className="w-full bg-transparent font-display text-3xl md:text-4xl leading-tight rounded px-1 -mx-1 focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent/20"
           />
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600 mt-2">
             <span>{formatDate(service.date)}</span>
-            {service.week && <span>Week {service.week}</span>}
+            {series && service.week && <span className="font-semibold">Week {service.week} of {series.title}</span>}
             <span className="inline-flex items-center gap-1"><Users className="w-4 h-4" />{service.audience} · {service.classSize} kids</span>
-            <span className="inline-flex items-center gap-1 font-semibold text-charcoal"><Clock className="w-4 h-4" />{formatDuration(serviceMinutes(service))}</span>
+            <span className="inline-flex items-center gap-1 font-semibold text-ink"><Clock className="w-4 h-4" />{formatDuration(serviceMinutes(service))}</span>
           </div>
           {service.bigIdea && <p className="mt-2 text-gray-700 italic">{service.bigIdea}</p>}
         </div>
@@ -139,12 +152,12 @@ export const ServiceEditor: React.FC<{ serviceId: string; focusPartId?: string }
           </Menu>
           <Menu label="Service actions">
             <MenuItem icon={Copy} onClick={duplicate}>Duplicate service</MenuItem>
-            <MenuItem icon={Download} onClick={() => downloadJson(`${slug(service.title)}.parable.json`, { version: 1, services: [service], library: [] })}>Export file</MenuItem>
+            <MenuItem icon={Download} onClick={() => downloadJson(`${slug(service.title)}.parable.json`, { version: 1, series: [], services: [found!], library: [] })}>Export file</MenuItem>
             <MenuItem icon={LayoutList} onClick={() => mapSections((secs) => secs.map((s) => ({ ...s, collapsed: !allCollapsed })))}>
               {allCollapsed ? 'Expand all sections' : 'Collapse all sections'}
             </MenuItem>
             <MenuDivider />
-            <MenuItem icon={Trash2} danger onClick={() => { deleteService(service.id); navigate('/services'); }}>Delete service</MenuItem>
+            <MenuItem icon={Trash2} danger onClick={() => { deleteService(service.id); navigate(series ? `/series/${series.id}` : '/series'); }}>Delete service</MenuItem>
           </Menu>
         </div>
       </header>

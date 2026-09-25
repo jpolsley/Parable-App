@@ -14,7 +14,7 @@ export const LibraryPage: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 md:px-6 pb-24">
       <section className="py-10">
-        <h1 className="text-4xl md:text-5xl font-serif">Parts library</h1>
+        <h1 className="text-4xl md:text-5xl font-display">Parts library</h1>
         <p className="text-gray-600 mt-3 max-w-2xl">
           Parts you reuse every week, like welcome scripts, games, or a prayer routine. Save a part from its menu, then insert it into any section with <strong>From library</strong>.
         </p>
@@ -31,7 +31,7 @@ export const LibraryPage: React.FC = () => {
           </div>
           <ul className="space-y-3">
             {parts.map((p) => (
-              <li key={p.id} className="bg-white border-2 border-gray-200 rounded-xl p-4 flex gap-3">
+              <li key={p.id} className="bg-white border border-line rounded-xl p-4 flex gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold">{p.title}</span>

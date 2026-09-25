@@ -63,9 +63,9 @@ export const SectionCard: React.FC<SectionCardProps> = ({ service, section, sche
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`rounded-xl border-2 bg-cream/60 ${isDragging ? 'relative z-30 border-black shadow-2xl' : 'border-gray-200'} ${section.hidden ? 'opacity-60' : ''}`}
+      className={`rounded-2xl border bg-slate-50/80 ${isDragging ? 'relative z-30 border-accent shadow-lift' : 'border-line'} ${section.hidden ? 'opacity-60' : ''}`}
     >
-      <div className="flex items-center gap-1 px-2 py-2 border-b border-gray-200 bg-white/70 rounded-t-xl">
+      <div className="flex items-center gap-1 px-2 py-2 border-b border-line bg-white rounded-t-2xl">
         <button type="button" className="p-1.5 text-gray-400 hover:text-black cursor-grab active:cursor-grabbing touch-none" aria-label={`Reorder section ${section.title}`} {...attributes} {...listeners}>
           <GripVertical className="w-4 h-4" />
         </button>
@@ -78,10 +78,10 @@ export const SectionCard: React.FC<SectionCardProps> = ({ service, section, sche
           value={section.title}
           onChange={(e) => update((s) => ({ ...s, title: e.target.value }))}
           aria-label="Section title"
-          className="flex-1 min-w-0 bg-transparent font-serif text-xl px-1 py-0.5 rounded focus:bg-white focus:outline-none focus:ring-2 focus:ring-black/10"
+          className="flex-1 min-w-0 bg-transparent font-display text-xl px-1 py-0.5 rounded focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent/20"
         />
         {schedule[section.id] && <span className="hidden sm:inline font-mono text-xs text-gray-500">{schedule[section.id]}</span>}
-        <span className="text-xs font-semibold bg-charcoal text-white rounded-full px-2.5 py-1 whitespace-nowrap">{formatDuration(minutes)}</span>
+        <span className="text-xs font-semibold bg-ink text-white rounded-full px-2.5 py-1 whitespace-nowrap">{formatDuration(minutes)}</span>
         <IconButton icon={section.hidden ? EyeOff : Eye} label={section.hidden ? 'Show section' : 'Hide section'} onClick={() => update((s) => ({ ...s, hidden: !s.hidden }))} />
         <Menu label="Section actions">
           <MenuItem icon={Copy} onClick={() => actions.duplicateSection(section.id)}>Duplicate section</MenuItem>
@@ -142,7 +142,7 @@ export const SectionCard: React.FC<SectionCardProps> = ({ service, section, sche
 const AISuggestButton: React.FC<{ onClick: () => void }> = ({ onClick }) => {
   const { aiSettings } = useStore();
   if (!aiSettings.enabled) return null;
-  return <Button type="button" size="sm" variant="ghost" icon={Sparkles} className="text-brand-blue" onClick={onClick}>Suggest parts</Button>;
+  return <Button type="button" size="sm" variant="ghost" icon={Sparkles} className="text-accent" onClick={onClick}>Suggest parts</Button>;
 };
 
 export const LibraryPicker: React.FC<{ open: boolean; onClose: () => void; onPick: (p: Part) => void }> = ({ open, onClose, onPick }) => {
@@ -165,7 +165,7 @@ export const LibraryPicker: React.FC<{ open: boolean; onClose: () => void; onPic
                 <button
                   type="button"
                   onClick={() => { onPick(copyForInsert(p)); onClose(); }}
-                  className="w-full text-left bg-white border border-gray-200 rounded-lg p-3 hover:border-black"
+                  className="w-full text-left bg-white border border-gray-200 rounded-lg p-3 hover:border-gray-300"
                 >
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold">{p.title}</span>
@@ -236,10 +236,10 @@ const SuggestPartsModal: React.FC<{ open: boolean; onClose: () => void; service:
             <ul className="space-y-2">
               {parts.map((p) => (
                 <li key={p.id}>
-                  <label className="flex gap-3 bg-white border border-gray-200 rounded-lg p-3 cursor-pointer has-[:checked]:border-black">
+                  <label className="flex gap-3 bg-white border border-gray-200 rounded-lg p-3 cursor-pointer has-[:checked]:border-accent">
                     <input
                       type="checkbox"
-                      className="mt-1 w-4 h-4 accent-black"
+                      className="mt-1 w-4 h-4 accent-indigo-600"
                       checked={picked.has(p.id)}
                       onChange={(e) => {
                         const next = new Set(picked);
