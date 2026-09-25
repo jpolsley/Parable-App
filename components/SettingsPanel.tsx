@@ -1,69 +1,79 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { CheckCircle2, AlertTriangle, Plug } from 'lucide-react';
 import { AISettings, DEFAULT_SETTINGS } from '../services/aiSettings';
-import { Button } from './Button';
-import { Icons } from './Icons';
+import { testConnection } from '../services/aiService';
+import { useStore } from '../store/StoreContext';
+import { Button, Label, Modal, Toggle, inputClass } from './ui';
 
-interface SettingsPanelProps {
-  settings: AISettings;
-  onSave: (settings: AISettings) => void;
-  onClose: () => void;
-}
+export const SettingsPanel: React.FC = () => {
+  const { aiSettings, setAiSettings, settingsOpen, setSettingsOpen } = useStore();
+  const [draft, setDraft] = useState<AISettings>(aiSettings);
+  const [status, setStatus] = useState<{ ok: boolean; message: string } | null>(null);
+  const [testing, setTesting] = useState(false);
 
-const inputClass = "w-full bg-white border-2 border-gray-200 p-3 text-sm focus:border-black focus:outline-none transition-colors rounded-none";
-const labelClass = "block font-bold text-gray-700 uppercase tracking-wider text-xs mb-2";
+  useEffect(() => {
+    if (settingsOpen) {
+      setDraft(aiSettings);
+      setStatus(null);
+    }
+  }, [settingsOpen, aiSettings]);
 
-export const SettingsPanel: React.FC<SettingsPanelProps> = ({ settings, onSave, onClose }) => {
-  const [draft, setDraft] = useState<AISettings>(settings);
+  const update = (field: keyof AISettings) => (e: React.ChangeEvent<HTMLInputElement>) => setDraft({ ...draft, [field]: e.target.value });
+  const cleaned = () => ({ ...draft, baseUrl: draft.baseUrl.trim(), model: draft.model.trim(), apiKey: draft.apiKey.trim() });
 
-  const update = (field: keyof AISettings) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setDraft({ ...draft, [field]: e.target.value });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave({ ...draft, baseUrl: draft.baseUrl.trim(), model: draft.model.trim(), apiKey: draft.apiKey.trim() });
+  const test = async () => {
+    setTesting(true);
+    try {
+      setStatus({ ok: true, message: await testConnection(cleaned()) });
+    } catch (e) {
+      setStatus({ ok: false, message: e instanceof Error ? e.message : 'Connection failed.' });
+    } finally {
+      setTesting(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
+    <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="AI assistant">
       <form
-        onSubmit={handleSubmit}
-        onClick={(e) => e.stopPropagation()}
-        className="bg-cream border-2 border-black shadow-hard w-full max-w-lg p-6 md:p-8 space-y-6"
+        onSubmit={(e) => { e.preventDefault(); setAiSettings(cleaned()); setSettingsOpen(false); }}
+        className="space-y-5"
       >
-        <div className="flex items-start justify-between">
+        <p className="text-sm text-gray-600">
+          Parable works fully without AI. Turn it on to get draft, improve, and suggest buttons from your own self-hosted model.
+          It works with any OpenAI-compatible server: Ollama, LM Studio, llama.cpp, vLLM, or LocalAI.
+        </p>
+        <Toggle checked={draft.enabled} onChange={(enabled) => setDraft({ ...draft, enabled })} label="Show AI helpers" />
+
+        <fieldset disabled={!draft.enabled} className="space-y-4 disabled:opacity-50">
           <div>
-            <h2 className="text-2xl font-serif">AI Server</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Any OpenAI-compatible server works: Ollama, LM Studio, llama.cpp, vLLM, LocalAI.
-            </p>
+            <Label htmlFor="ai-url">Server URL</Label>
+            <input id="ai-url" className={inputClass} required value={draft.baseUrl} onChange={update('baseUrl')} placeholder={DEFAULT_SETTINGS.baseUrl} />
+            <p className="text-xs text-gray-400 mt-1">Ollama: http://localhost:11434/v1 · LM Studio: http://localhost:1234/v1</p>
           </div>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-black" aria-label="Close">
-            <Icons.Close className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div>
-          <label className={labelClass}>Base URL</label>
-          <input className={inputClass} required value={draft.baseUrl} onChange={update('baseUrl')} placeholder={DEFAULT_SETTINGS.baseUrl} />
-          <p className="text-xs text-gray-400 mt-1">Ollama: http://localhost:11434/v1 · LM Studio: http://localhost:1234/v1</p>
-        </div>
-
-        <div>
-          <label className={labelClass}>Model</label>
-          <input className={inputClass} required value={draft.model} onChange={update('model')} placeholder="llama3.1" />
-        </div>
-
-        <div>
-          <label className={labelClass}>API Key (optional)</label>
-          <input className={inputClass} type="password" value={draft.apiKey} onChange={update('apiKey')} placeholder="Leave blank if your server doesn't need one" />
-          <p className="text-xs text-gray-400 mt-1">Saved only in this browser.</p>
-        </div>
+          <div>
+            <Label htmlFor="ai-model">Model</Label>
+            <input id="ai-model" className={inputClass} required value={draft.model} onChange={update('model')} placeholder="llama3.1" />
+          </div>
+          <div>
+            <Label htmlFor="ai-key">API key (optional)</Label>
+            <input id="ai-key" className={inputClass} type="password" value={draft.apiKey} onChange={update('apiKey')} placeholder="Leave blank if your server doesn't need one" />
+            <p className="text-xs text-gray-400 mt-1">Saved only in this browser.</p>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button type="button" size="sm" variant="outline" icon={Plug} loading={testing} onClick={test}>Test connection</Button>
+            {status && (
+              <span className={`inline-flex items-center gap-1.5 text-sm ${status.ok ? 'text-emerald-700' : 'text-red-700'}`}>
+                {status.ok ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />} {status.message}
+              </span>
+            )}
+          </div>
+        </fieldset>
 
         <div className="flex gap-3">
           <Button type="submit" className="flex-1">Save</Button>
           <Button type="button" variant="outline" onClick={() => setDraft(DEFAULT_SETTINGS)}>Reset</Button>
         </div>
       </form>
-    </div>
+    </Modal>
   );
 };

@@ -1,110 +1,243 @@
-import { CurriculumSeries, GeneratorParams } from "../types";
-import { AISettings } from "./aiSettings";
+import { Part, Section, Service, Supply } from '../types';
+import { addDays, newPart, newSection, newService, newSupply } from '../lib/factory';
+import { PART_TYPE_KEYS, PART_TYPES } from '../lib/partTypes';
+import { AISettings } from './aiSettings';
 
-const SYSTEM_INSTRUCTION = "You are a world-class curriculum developer for The Bible Project. You prioritize literary context, historical background, and Jesus-centered theology. You write full content that a leader could read and teach from directly, not just bullet points. You always respond with a single valid JSON object and nothing else.";
+interface ChatMessage {
+  role: 'system' | 'user';
+  content: string;
+}
 
-const JSON_SHAPE = `{
-  "title": "Series Title",
-  "description": "Series overview (approx 50 words)",
-  "target_audience": "string",
-  "weeks": [
-    {
-      "week_number": 1,
-      "title": "string",
-      "scripture_reference": "string",
-      "key_verse": "string",
-      "main_idea": "string",
-      "learning_objective": "string",
-      "hook": "Full opening story/hook text",
-      "teaching_points": [
-        { "point": "The headline", "description": "Full teaching paragraph (100+ words)" }
-      ],
-      "discussion_questions": ["string"],
-      "application_challenge": "string",
-      "activity_idea": "string"
-    }
-  ]
-}`;
+const SYSTEM = "You are an experienced children's and youth ministry curriculum writer. You prioritize literary context, historical background, and Jesus-centered theology, and you write engaging, age-appropriate content that a volunteer leader can read and use directly. Avoid Christian jargon where possible; use fresh language.";
 
-const buildPrompt = ({ topic, audience, duration, tone }: GeneratorParams) => `
-    Create a comprehensive, print-ready ${duration}-week youth ministry curriculum series about "${topic}".
-    Target Audience: ${audience}.
-    Tone: ${tone}.
-    
-    For each week, provide a FULL lesson plan (not just an outline) including:
-    1. Creative Title & Scripture Reference.
-    2. Key Verse (NIV or ESV).
-    3. Learning Objective (Clear outcome).
-    4. Main Idea (The 'Big Idea' in one sentence).
-    5. The Hook: A full, engaging opening story, cultural analogy, or interaction (approx 100-150 words) that sets up the tension.
-    6. Teaching Guide: 3 distinct teaching points. For EACH point, provide a detailed paragraph (approx 100-150 words) of teaching script/commentary. It should be theologically rich, explaining the text and connecting to the gospel.
-    7. Discussion Questions: 5 thought-provoking questions (Observation -> Interpretation -> Application).
-    8. Application Challenge: A specific weekly practice.
-    9. Activity: A game or object lesson that visibly demonstrates the truth.
+const endpoint = (settings: AISettings, path: string) => `${settings.baseUrl.replace(/\/+$/, '')}${path}`;
 
-    Style Guide:
-    - Intellectual and respectful of the student's capacity.
-    - Narrative-driven (fit this topic into the larger story of the Bible).
-    - Avoid Christian jargon where possible; use fresh language.
-    - Formatting must be clean and structured.
-
-    Respond ONLY with a JSON object in exactly this shape, with exactly ${duration} entries in "weeks":
-    ${JSON_SHAPE}
-  `;
-
-// Local models sometimes wrap JSON in prose or code fences; pull out the outermost object.
-const extractJson = (text: string): string => {
-  const start = text.indexOf('{');
-  const end = text.lastIndexOf('}');
-  if (start === -1 || end <= start) {
-    throw new Error("The AI response did not contain JSON.");
-  }
-  return text.slice(start, end + 1);
+const headers = (settings: AISettings) => {
+  const h: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (settings.apiKey) h['Authorization'] = `Bearer ${settings.apiKey}`;
+  return h;
 };
 
-const chatCompletion = async (settings: AISettings, body: object): Promise<Response> => {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (settings.apiKey) headers['Authorization'] = `Bearer ${settings.apiKey}`;
-
-  const url = `${settings.baseUrl.replace(/\/+$/, '')}/chat/completions`;
+const post = async (settings: AISettings, body: object): Promise<Response> => {
   try {
-    return await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+    return await fetch(endpoint(settings, '/chat/completions'), { method: 'POST', headers: headers(settings), body: JSON.stringify(body) });
   } catch {
     throw new Error(`Could not reach your AI server at ${settings.baseUrl}. Make sure it is running and allows requests from this site (CORS).`);
   }
 };
 
-export const generateCurriculum = async (params: GeneratorParams, settings: AISettings): Promise<CurriculumSeries> => {
-  const body = {
-    model: settings.model,
-    messages: [
-      { role: 'system', content: SYSTEM_INSTRUCTION },
-      { role: 'user', content: buildPrompt(params) },
-    ],
-    temperature: 0.7,
-    stream: false,
-  };
+const chat = async (settings: AISettings, messages: ChatMessage[], json: boolean): Promise<string> => {
+  const body = { model: settings.model, messages, temperature: 0.7, stream: false };
 
   // Ask for JSON mode first; some servers reject response_format, so retry without it.
-  let response = await chatCompletion(settings, { ...body, response_format: { type: 'json_object' } });
-  if (response.status === 400 || response.status === 422) {
-    response = await chatCompletion(settings, body);
+  let response = await post(settings, json ? { ...body, response_format: { type: 'json_object' } } : body);
+  if (json && (response.status === 400 || response.status === 422)) {
+    response = await post(settings, body);
   }
-
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
     throw new Error(`AI server returned ${response.status}${detail ? `: ${detail.slice(0, 200)}` : ''}`);
   }
-
   const data = await response.json();
   const text: string | undefined = data?.choices?.[0]?.message?.content;
-  if (!text) {
-    throw new Error("No response from the AI server.");
-  }
+  if (!text) throw new Error('No response from the AI server.');
+  return text.trim();
+};
 
-  const parsed = JSON.parse(extractJson(text)) as CurriculumSeries;
-  if (!Array.isArray(parsed.weeks)) {
-    throw new Error("The AI response was missing the weekly lessons.");
+// Local models sometimes wrap JSON in prose or code fences; pull out the outermost object.
+const chatJson = async <T>(settings: AISettings, prompt: string): Promise<T> => {
+  const text = await chat(settings, [
+    { role: 'system', content: `${SYSTEM} You always respond with a single valid JSON object and nothing else.` },
+    { role: 'user', content: prompt },
+  ], true);
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start === -1 || end <= start) throw new Error('The AI response did not contain JSON.');
+  try {
+    return JSON.parse(text.slice(start, end + 1)) as T;
+  } catch {
+    throw new Error('The AI returned malformed JSON. Try again, or use a larger model.');
   }
-  return parsed;
+};
+
+const chatText = (settings: AISettings, prompt: string) =>
+  chat(settings, [{ role: 'system', content: SYSTEM }, { role: 'user', content: prompt }], false);
+
+export const testConnection = async (settings: AISettings): Promise<string> => {
+  let response: Response;
+  try {
+    response = await fetch(endpoint(settings, '/models'), { headers: headers(settings) });
+  } catch {
+    throw new Error(`Could not reach ${settings.baseUrl}. Is the server running, and is CORS enabled?`);
+  }
+  if (!response.ok) throw new Error(`Server responded with ${response.status}.`);
+  const data = await response.json().catch(() => null);
+  const models: string[] = Array.isArray(data?.data) ? data.data.map((m: { id: string }) => m.id) : [];
+  if (models.length && !models.includes(settings.model)) {
+    return `Connected, but model "${settings.model}" wasn't listed. Available: ${models.slice(0, 8).join(', ')}`;
+  }
+  return 'Connected.';
+};
+
+// ---------- Context ----------
+
+export const describeService = (service: Service, focusPartId?: string) => {
+  const lines = [
+    `Service: "${service.title}" for ${service.audience}.`,
+    service.series && `Series: ${service.series}${service.week ? `, week ${service.week}` : ''}.`,
+    service.bigIdea && `Big idea: ${service.bigIdea}`,
+    service.scripture && `Scripture: ${service.scripture}`,
+    service.keyVerse && `Key verse: ${service.keyVerse}`,
+    `Class size: about ${service.classSize} kids in ${service.groupCount} groups.`,
+    'Run of service:',
+    ...service.sections.flatMap((s) => [
+      `- ${s.title}`,
+      ...s.parts.map((p) => `    - ${p.title} (${PART_TYPES[p.type].label}, ${p.minutes} min)${p.id === focusPartId ? '  <-- the part being written' : ''}`),
+    ]),
+  ];
+  return lines.filter(Boolean).join('\n');
+};
+
+// ---------- Part-level helpers ----------
+
+export type TextField = 'script' | 'instructions' | 'inclusionTips' | 'leaderNotes';
+
+const FIELD_ASK: Record<TextField, string> = {
+  script: 'Write the word-for-word script the leader reads aloud for this part. Use short paragraphs. Mark any leader actions in [brackets].',
+  instructions: 'Write clear step-by-step leader instructions for this part: setup, how to lead it, and how to wrap up. Use a numbered list.',
+  inclusionTips: 'Write 3–5 practical tips for adapting this part so kids with different abilities, attention spans, sensory needs, or language levels can fully participate.',
+  leaderNotes: 'Write brief prep notes for the leader: what to review beforehand, what to watch for, and how this part connects to the big idea.',
+};
+
+export const draftPartText = (settings: AISettings, service: Service, section: Section, part: Part, field: TextField, instruction: string) =>
+  chatText(settings, [
+    describeService(service, part.id),
+    '',
+    `You are writing the "${part.title}" part (${PART_TYPES[part.type].label}, ${part.minutes} minutes) in the "${section.title}" section.`,
+    part.script && field !== 'script' ? `Its current script is:\n${part.script}` : '',
+    part[field] ? `The current text is:\n${part[field]}\n\nRevise or improve it.` : '',
+    FIELD_ASK[field],
+    instruction && `Additional direction from the leader: ${instruction}`,
+    'Return only the text itself, with no preamble or headings.',
+  ].filter(Boolean).join('\n'));
+
+export const suggestSupplies = async (settings: AISettings, service: Service, part: Part): Promise<Supply[]> => {
+  const result = await chatJson<{ supplies?: unknown[] }>(settings, [
+    describeService(service, part.id),
+    '',
+    `List the supplies needed for "${part.title}" (${PART_TYPES[part.type].label}).`,
+    part.instructions && `Instructions:\n${part.instructions}`,
+    part.script && `Script:\n${part.script}`,
+    'Respond as {"supplies":[{"name":"...","qty":1,"per":"total"}]}. "per" is "total" (fixed amount), "person" (each kid needs qty), or "group" (each small group needs qty).',
+  ].filter(Boolean).join('\n'));
+  return (result.supplies ?? []).map((s) => newSupply((s ?? {}) as Partial<Supply>)).filter((s) => s.name);
+};
+
+// ---------- Section / service helpers ----------
+
+const PART_SHAPE = `{"title":"...","type":"one of: ${PART_TYPE_KEYS.join(', ')}","minutes":5,"script":"word-for-word leader script","instructions":"numbered steps","supplies":[{"name":"...","qty":1,"per":"total|person|group"}]}`;
+
+export const suggestParts = async (settings: AISettings, service: Service, section: Section, instruction: string): Promise<Part[]> => {
+  const result = await chatJson<{ parts?: unknown[] }>(settings, [
+    describeService(service),
+    '',
+    `Suggest 1–3 new parts for the "${section.title}" section that fit the big idea and complement what is already there.`,
+    instruction && `Direction from the leader: ${instruction}`,
+    `Respond as {"parts":[${PART_SHAPE}]}. Write full scripts and instructions, not outlines.`,
+  ].filter(Boolean).join('\n'));
+  return (result.parts ?? []).map((p) => newPart((p ?? {}) as Partial<Part>));
+};
+
+export const draftService = async (
+  settings: AISettings,
+  params: { topic: string; audience: string; skeleton: Section[] },
+): Promise<Pick<Service, 'title' | 'bigIdea' | 'keyVerse' | 'scripture' | 'sections'>> => {
+  const skeleton = params.skeleton.length
+    ? `Use exactly this structure, filling in every part:\n${params.skeleton.map((s) => `- ${s.title}: ${s.parts.map((p) => `${p.title} (${p.type}, ${p.minutes} min)`).join('; ')}`).join('\n')}`
+    : 'Design 3–5 sections with 1–4 parts each, totaling about 75–90 minutes.';
+  const result = await chatJson<Record<string, unknown>>(settings, [
+    `Create a complete ministry service about "${params.topic}" for ${params.audience}.`,
+    skeleton,
+    `Respond as {"title":"...","bigIdea":"one sentence","scripture":"reference","keyVerse":"verse text (reference)","sections":[{"title":"...","parts":[${PART_SHAPE}]}]}.`,
+    'Write full scripts and instructions a volunteer can use directly.',
+  ].join('\n'));
+  const service = newService({ ...result, sections: Array.isArray(result.sections) ? result.sections : [] });
+  return { title: service.title, bigIdea: service.bigIdea, keyVerse: service.keyVerse, scripture: service.scripture, sections: service.sections };
+};
+
+export const askAboutService = (settings: AISettings, service: Service, question: string) =>
+  chatText(settings, `${describeService(service)}\n\nThe leader asks: ${question}\n\nAnswer helpfully and concisely.`);
+
+// ---------- Series ----------
+
+interface WeekOutline {
+  title?: string;
+  scripture?: string;
+  bigIdea?: string;
+}
+
+interface WeekDetail {
+  keyVerse?: string;
+  hook?: string;
+  teaching?: string;
+  discussionQuestions?: string[];
+  challenge?: string;
+  activity?: { title?: string; instructions?: string; supplies?: unknown[] };
+}
+
+export const draftSeries = async (
+  settings: AISettings,
+  params: { topic: string; audience: string; weeks: number; startDate: string },
+  onProgress: (message: string) => void,
+): Promise<Service[]> => {
+  onProgress('Outlining the series…');
+  const outline = await chatJson<{ title?: string; weeks?: WeekOutline[] }>(settings, [
+    `Outline a ${params.weeks}-week ministry series about "${params.topic}" for ${params.audience}.`,
+    'Fit the topic into the larger story of the Bible.',
+    `Respond as {"title":"series title","weeks":[{"title":"...","scripture":"reference","bigIdea":"one sentence"}]} with exactly ${params.weeks} weeks.`,
+  ].join('\n'));
+  const seriesTitle = outline.title || params.topic;
+  const weeks = (outline.weeks ?? []).slice(0, params.weeks);
+  if (!weeks.length) throw new Error('The AI did not return any weeks.');
+
+  const services: Service[] = [];
+  for (const [i, week] of weeks.entries()) {
+    onProgress(`Writing week ${i + 1} of ${weeks.length}: ${week.title ?? ''}`);
+    const d = await chatJson<WeekDetail>(settings, [
+      `Series: "${seriesTitle}" for ${params.audience}. Week ${i + 1}: "${week.title}". Scripture: ${week.scripture}. Big idea: ${week.bigIdea}.`,
+      'Write the full lesson content.',
+      'Respond as {"keyVerse":"verse text (reference)","hook":"100-150 word opening story or illustration, as a script","teaching":"3 teaching points, each a headline followed by a 100-150 word script paragraph","discussionQuestions":["5 questions moving from observation to interpretation to application"],"challenge":"a specific practice for the week","activity":{"title":"...","instructions":"numbered steps","supplies":[{"name":"...","qty":1,"per":"total|person|group"}]}}',
+    ].join('\n'));
+    const questions = (d.discussionQuestions ?? []).map((q, n) => `${n + 1}. ${q}`).join('\n');
+    services.push(newService({
+      title: week.title || `Week ${i + 1}`,
+      series: seriesTitle,
+      week: i + 1,
+      audience: params.audience,
+      date: addDays(params.startDate, 7 * i),
+      bigIdea: week.bigIdea,
+      scripture: week.scripture,
+      keyVerse: d.keyVerse,
+      sections: [
+        newSection({ title: 'Opening', parts: [newPart({ title: 'Welcome & Hook', type: 'script', minutes: 10, script: d.hook })] }),
+        newSection({ title: 'Worship', parts: [newPart({ title: 'Worship Set', type: 'worship', minutes: 15 })] }),
+        newSection({
+          title: 'Teaching',
+          parts: [
+            newPart({ title: week.title || 'Teaching', type: 'bible-story', minutes: 20, script: d.teaching }),
+            newPart({ title: 'Key Verse', type: 'bible-verse', minutes: 3, script: d.keyVerse }),
+          ],
+        }),
+        newSection({
+          title: 'Small Groups',
+          parts: [
+            newPart({ title: d.activity?.title || 'Activity', type: 'group-activity', minutes: 15, instructions: d.activity?.instructions, supplies: d.activity?.supplies }),
+            newPart({ title: 'Discussion', type: 'discussion', minutes: 15, script: questions }),
+            newPart({ title: 'Weekly Challenge', type: 'script', minutes: 5, script: d.challenge }),
+          ],
+        }),
+      ],
+    }));
+  }
+  return services;
 };

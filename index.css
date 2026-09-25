@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "DM Serif Display", ui-serif, Georgia, serif;
+  --color-cream: #F9F7F2;
+  --color-charcoal: #1A1A1A;
+  --color-brand-blue: #3D5A80;
+  --color-brand-orange: #EE6C4D;
+  --shadow-hard: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+  --shadow-hard-sm: 2px 2px 0px 0px rgba(0, 0, 0, 1);
+}
+
+body {
+  background-color: var(--color-cream);
+  color: var(--color-charcoal);
+}
+
+@media print {
+  @page {
+    margin: 1.5cm;
+  }
+  body {
+    background: white;
+  }
+}

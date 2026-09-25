@@ -1,21 +1,41 @@
-# Parable — Youth Curriculum Generator
+# Parable — Service Builder
 
-Create thoughtful, biblically rich youth ministry curriculum series using **your own self-hosted AI**.
+Plan kids and youth ministry services section by section and part by part: scripts, instructions,
+supplies, media, inclusion tips, and leader notes. Print a polished leader guide when you're done.
+AI is an optional assistant powered by **your own self-hosted model**.
 
-The app is a static site hosted on GitHub Pages. It sends requests straight from your browser to any
-OpenAI-compatible server you run (Ollama, LM Studio, llama.cpp, vLLM, LocalAI, …). No data goes to a
-third-party AI provider.
+## What you can do
+
+- **Build services** from templates (Kids Service, Youth Night, Preschool) or from scratch.
+- **Drag to reorder** sections and parts, move parts between sections, hide parts without deleting them.
+- **Live run times.** Set a start time and every section and part shows its clock time; totals update as you edit.
+- **Supplies that scale.** Enter quantities "per kid" or "per group" and the supply list totals them for your class size, with a checklist.
+- **Parts library.** Save a part (weekly welcome, favorite game) and insert it into any service.
+- **Print** a full leader guide, a one-page run sheet, a supply list, or a single section or part. Page breaks are yours to set.
+- **Series.** Group services by series and week. Duplicate a service to start next week's.
+- **Your data stays yours.** Everything saves automatically in your browser. Export a file or back up everything, then import it on another device.
+
+### AI assistant (optional)
+
+When it's turned on, AI adds small buttons. It never changes anything until you click **Use this**:
+
+- Draft or improve a part's script, instructions, inclusion tips, or leader notes
+- Suggest supplies for a part
+- Suggest new parts for a section
+- Write a first draft of a whole service from a template
+- Draft a multi-week series, one service per week
+- Ask questions about the service you're building
 
 ## Use it
 
 1. Open the GitHub Pages site (`https://<your-user>.github.io/Parable-App/`).
-2. Click **AI Server** in the top-right and enter:
+2. Click **AI** in the top-right, turn on the helpers, and enter:
    - **Base URL** — e.g. `http://localhost:11434/v1` (Ollama) or `http://localhost:1234/v1` (LM Studio)
    - **Model** — e.g. `llama3.1`, `qwen2.5:14b`, `mistral-nemo`
    - **API Key** — only if your server requires one
-3. Pick a topic and generate.
+3. Click **Test connection**, then **Save**.
 
-Settings are saved in your browser only.
+AI settings and all your services are saved in your browser only. Use **Back up everything** on the home page to keep a copy.
 
 ### Allowing the site to talk to your server (CORS)
 

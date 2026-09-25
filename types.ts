@@ -1,40 +1,86 @@
+export type PartType =
+  | 'script'
+  | 'bible-story'
+  | 'bible-verse'
+  | 'worship'
+  | 'video'
+  | 'game'
+  | 'group-activity'
+  | 'discussion'
+  | 'prayer'
+  | 'craft'
+  | 'announcement'
+  | 'other';
 
-export interface TeachingPoint {
-  point: string;
-  description: string;
+// How a supply quantity scales: a fixed amount, or multiplied by class size / group count.
+export type SupplyPer = 'total' | 'person' | 'group';
+
+export interface Supply {
+  id: string;
+  name: string;
+  qty: number;
+  per: SupplyPer;
 }
 
-export interface WeekContent {
-  week_number: number;
+export interface LinkItem {
+  id: string;
+  label: string;
+  url: string;
+}
+
+export interface Part {
+  id: string;
   title: string;
-  scripture_reference: string;
-  key_verse: string;
-  main_idea: string;
-  learning_objective: string;
-  hook: string;
-  teaching_points: TeachingPoint[]; 
-  discussion_questions: string[];
-  application_challenge: string;
-  activity_idea: string;
+  type: PartType;
+  minutes: number;
+  hidden: boolean;
+  pageBreak: boolean;
+  script: string;
+  instructions: string;
+  supplies: Supply[];
+  media: LinkItem[];
+  resources: LinkItem[];
+  inclusionTips: string;
+  leaderNotes: string;
 }
 
-export interface CurriculumSeries {
+export interface Section {
+  id: string;
   title: string;
-  description: string;
-  target_audience: string;
-  weeks: WeekContent[];
+  hidden: boolean;
+  pageBreak: boolean;
+  collapsed: boolean;
+  parts: Part[];
 }
 
-export interface GeneratorParams {
-  topic: string;
+export interface Service {
+  id: string;
+  title: string;
   audience: string;
-  duration: number; // number of weeks
-  tone: string;
+  series: string;
+  week: number | null;
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:MM, 24h
+  classSize: number;
+  groupCount: number;
+  bigIdea: string;
+  keyVerse: string;
+  scripture: string;
+  checkedSupplies: string[];
+  sections: Section[];
+  createdAt: number;
+  updatedAt: number;
 }
 
-export enum AppState {
-  IDLE = 'IDLE',
-  GENERATING = 'GENERATING',
-  VIEWING = 'VIEWING',
-  ERROR = 'ERROR'
+export interface Database {
+  version: 1;
+  services: Service[];
+  library: Part[];
 }
+
+export type PrintScope =
+  | { kind: 'guide' }
+  | { kind: 'run-sheet' }
+  | { kind: 'supplies' }
+  | { kind: 'section'; sectionId: string }
+  | { kind: 'part'; sectionId: string; partId: string };

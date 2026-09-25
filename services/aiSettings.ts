@@ -1,4 +1,5 @@
 export interface AISettings {
+  enabled: boolean;
   baseUrl: string; // OpenAI-compatible base URL, e.g. http://localhost:11434/v1
   model: string;
   apiKey: string; // optional; most self-hosted servers ignore it
@@ -7,6 +8,7 @@ export interface AISettings {
 const STORAGE_KEY = 'parable.aiSettings';
 
 export const DEFAULT_SETTINGS: AISettings = {
+  enabled: true,
   baseUrl: import.meta.env.VITE_AI_BASE_URL || 'http://localhost:11434/v1',
   model: import.meta.env.VITE_AI_MODEL || 'llama3.1',
   apiKey: import.meta.env.VITE_AI_API_KEY || '',
