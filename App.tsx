@@ -1,143 +1,83 @@
-import React, { useState, useCallback } from 'react';
-import { GeneratorForm } from './components/GeneratorForm';
-import { CurriculumView } from './components/CurriculumView';
-import { AppState, CurriculumSeries, GeneratorParams } from './types';
-import { generateCurriculum } from './services/aiService';
-import { AISettings, loadSettings, saveSettings } from './services/aiSettings';
-import { Icons } from './components/Icons';
+import React from 'react';
+import { AlertTriangle, Bookmark, Check, Cloud, Layers, Loader2, Sparkles, Undo2, X } from 'lucide-react';
+import { StoreProvider, useStore } from './store/StoreContext';
+import { navigate, useRoute } from './lib/route';
+import { HomeDashboard } from './components/HomeDashboard';
+import { ServicesPage } from './components/ServicesPage';
+import { ServiceEditor } from './components/ServiceEditor';
+import { LibraryPage } from './components/LibraryPage';
 import { SettingsPanel } from './components/SettingsPanel';
+import { PrintRoot } from './components/PrintView';
 
-const App: React.FC = () => {
-  const [appState, setAppState] = useState<AppState>(AppState.IDLE);
-  const [curriculum, setCurriculum] = useState<CurriculumSeries | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [settings, setSettings] = useState<AISettings>(loadSettings);
-  const [showSettings, setShowSettings] = useState(false);
+const SaveIndicator: React.FC = () => {
+  const { saveState } = useStore();
+  if (saveState === 'saving') return <span className="inline-flex items-center gap-1.5"><Loader2 className="w-4 h-4 animate-spin" />Saving…</span>;
+  if (saveState === 'error') return <span className="inline-flex items-center gap-1.5 text-red-700"><AlertTriangle className="w-4 h-4" />Storage full. Export a backup.</span>;
+  return <span className="inline-flex items-center gap-1.5"><Cloud className="w-4 h-4" /><Check className="w-3 h-3 -ml-2.5 mt-1" />Saved in this browser</span>;
+};
 
-  const handleSaveSettings = (next: AISettings) => {
-    setSettings(next);
-    saveSettings(next);
-    setShowSettings(false);
-  };
-
-  const handleGenerate = useCallback(async (params: GeneratorParams) => {
-    setAppState(AppState.GENERATING);
-    setError(null);
-    try {
-      const data = await generateCurriculum(params, settings);
-      setCurriculum(data);
-      setAppState(AppState.VIEWING);
-    } catch (err) {
-      console.error(err);
-      const detail = err instanceof Error ? err.message : '';
-      setError(`Something went wrong while crafting your series. ${detail}`.trim());
-      setAppState(AppState.ERROR);
-    }
-  }, [settings]);
-
-  const resetApp = () => {
-    setAppState(AppState.IDLE);
-    setCurriculum(null);
-    setError(null);
-  };
+const Shell: React.FC = () => {
+  const route = useRoute();
+  const { setSettingsOpen, aiStatus, toasts, dismissToast } = useStore();
+  const aiDot = { off: 'bg-gray-300', checking: 'bg-amber-400', online: 'bg-emerald-500', offline: 'bg-red-500' }[aiStatus];
+  const aiLabel = { off: 'AI off', checking: 'AI…', online: 'AI on', offline: 'AI offline' }[aiStatus];
+  const nav = (active: boolean) => `px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap ${active ? 'bg-black/5 text-black' : 'text-gray-500 hover:text-black'}`;
 
   return (
-    <div className="min-h-screen bg-cream font-sans text-charcoal">
-      {/* App Shell */}
-      {appState !== AppState.VIEWING && (
-        <div className="flex flex-col min-h-screen">
-          {/* Nav */}
-          <nav className="w-full py-6 px-8 flex justify-between items-center">
-            <div className="flex items-center gap-2 font-bold text-xl tracking-tight font-serif">
-              <Icons.Layers className="w-8 h-8 text-black" />
-              <span>PARABLE</span>
-            </div>
-            <button
-              onClick={() => setShowSettings(true)}
-              className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-black transition-colors"
-            >
-              <Icons.Settings className="w-4 h-4" />
-              <span>AI Server</span>
+    <>
+      <div className="min-h-screen bg-cream font-sans text-charcoal print:hidden">
+        <nav className="border-b border-black/10 bg-cream/90 backdrop-blur sticky top-0 z-40">
+          <div className="max-w-7xl mx-auto px-4 md:px-6 h-14 flex items-center gap-2">
+            <button type="button" onClick={() => navigate('/')} className="flex items-center gap-2 font-bold text-lg tracking-tight font-serif mr-2 sm:mr-4">
+              <Layers className="w-6 h-6" /> <span className="hidden sm:inline">PARABLE</span>
             </button>
-          </nav>
+            <button type="button" className={nav(route.name === 'home')} onClick={() => navigate('/')}>Dashboard</button>
+            <button type="button" className={nav(route.name === 'services' || route.name === 'service')} onClick={() => navigate('/services')}>Services</button>
+            <button type="button" className={nav(route.name === 'library')} onClick={() => navigate('/library')}>
+              <Bookmark className="w-4 h-4 hidden sm:inline -mt-0.5 mr-1" />Library
+            </button>
+            <div className="flex-1" />
+            <span className="hidden md:inline text-xs text-gray-500 mr-3"><SaveIndicator /></span>
+            <button type="button" onClick={() => setSettingsOpen(true)} className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-black px-2 py-1.5 rounded-md hover:bg-black/5">
+              <Sparkles className="w-4 h-4" />
+              <span className={`w-2 h-2 rounded-full ${aiDot}`} aria-hidden="true" />
+              <span className="hidden sm:inline">{aiLabel}</span>
+            </button>
+          </div>
+        </nav>
 
-          {/* Main Content Area */}
-          <main className="flex-grow flex flex-col items-center justify-center px-4 pb-20">
-            <div className="w-full max-w-4xl mx-auto">
-              
-              {/* Hero Section (Only in IDLE/ERROR/GENERATING) */}
-              <div className="text-center mb-12 space-y-6 animate-in fade-in duration-700">
-                <h1 className="text-5xl md:text-7xl font-serif text-charcoal leading-[0.9] tracking-tight">
-                  Tell the story <br />
-                  <span className="text-gray-400 italic">that changes everything.</span>
-                </h1>
-                <p className="text-lg text-gray-600 max-w-xl mx-auto">
-                  Create thoughtful, biblically rich curriculum series for your youth ministry in seconds.
-                </p>
-              </div>
+        <main>
+          {route.name === 'service' && <ServiceEditor key={route.id} serviceId={route.id} focusPartId={route.partId} />}
+          {route.name === 'services' && <ServicesPage />}
+          {route.name === 'library' && <LibraryPage />}
+          {route.name === 'home' && <HomeDashboard />}
+        </main>
 
-              {/* Error Display */}
-              {appState === AppState.ERROR && (
-                 <div className="max-w-xl mx-auto mb-8 bg-red-50 border border-red-200 p-4 rounded flex items-start gap-3">
-                    <div className="text-red-500 mt-0.5">⚠️</div>
-                    <div>
-                      <h3 className="font-bold text-red-800 text-sm">Generation Failed</h3>
-                      <p className="text-red-600 text-sm">{error}</p>
-                      <div className="flex gap-4">
-                        <button 
-                          onClick={() => setAppState(AppState.IDLE)}
-                          className="text-xs font-bold text-red-800 underline mt-2"
-                        >
-                          Try Again
-                        </button>
-                        <button 
-                          onClick={() => setShowSettings(true)}
-                          className="text-xs font-bold text-red-800 underline mt-2"
-                        >
-                          Check AI Server Settings
-                        </button>
-                      </div>
-                    </div>
-                 </div>
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 space-y-2 w-[calc(100%-2rem)] max-w-md" aria-live="polite">
+          {toasts.map((t) => (
+            <div key={t.id} className="flex items-center gap-3 bg-charcoal text-white rounded-lg px-4 py-3 shadow-lg text-sm">
+              <span className="flex-1">{t.message}</span>
+              {t.undo && (
+                <button type="button" className="inline-flex items-center gap-1 font-semibold underline" onClick={() => { t.undo!(); dismissToast(t.id); }}>
+                  <Undo2 className="w-4 h-4" />Undo
+                </button>
               )}
-
-              {/* Form Area */}
-              <div className="bg-white md:rounded-lg p-1 md:shadow-[8px_8px_0px_0px_rgba(0,0,0,0.05)] border border-gray-100">
-                 <div className="bg-cream/30 border border-dashed border-gray-300 md:rounded p-6 md:p-10">
-                   <GeneratorForm 
-                      onSubmit={handleGenerate} 
-                      isLoading={appState === AppState.GENERATING} 
-                   />
-                 </div>
-              </div>
-              
+              <button type="button" aria-label="Dismiss" onClick={() => dismissToast(t.id)} className="text-white/60 hover:text-white"><X className="w-4 h-4" /></button>
             </div>
-          </main>
-
-          {/* Footer */}
-          <footer className="py-8 text-center text-gray-400 text-sm">
-            <p>&copy; {new Date().getFullYear()} Parable App. All rights reserved.</p>
-          </footer>
+          ))}
         </div>
-      )}
 
-      {/* Viewing State */}
-      {appState === AppState.VIEWING && curriculum && (
-        <CurriculumView 
-          data={curriculum} 
-          onReset={resetApp} 
-        />
-      )}
-
-      {showSettings && (
-        <SettingsPanel
-          settings={settings}
-          onSave={handleSaveSettings}
-          onClose={() => setShowSettings(false)}
-        />
-      )}
-    </div>
+        <SettingsPanel />
+      </div>
+      <PrintRoot />
+    </>
   );
 };
+
+const App: React.FC = () => (
+  <StoreProvider>
+    <Shell />
+  </StoreProvider>
+);
 
 export default App;
