@@ -112,7 +112,7 @@ const WeeklyLayout: React.FC<{ week: WeekContent; index: number }> = ({ week, in
             </h3>
             
             <div className="space-y-10">
-              {week.teaching_points.map((tp, i) => (
+              {(week.teaching_points ?? []).map((tp, i) => (
                 <div key={i} className="relative pl-8 border-l-2 border-gray-200">
                   <span className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-gray-200 border-2 border-white"></span>
                   <h4 className="text-xl font-bold text-charcoal mb-3">
@@ -132,7 +132,7 @@ const WeeklyLayout: React.FC<{ week: WeekContent; index: number }> = ({ week, in
               <Icons.Users className="w-4 h-4" /> Discussion
             </h3>
             <ol className="space-y-4 list-decimal list-inside marker:font-bold marker:text-gray-400">
-              {week.discussion_questions.map((q, idx) => (
+              {(week.discussion_questions ?? []).map((q, idx) => (
                 <li key={idx} className="text-gray-800 pl-2">
                   <span className="text-gray-700">{q}</span>
                 </li>

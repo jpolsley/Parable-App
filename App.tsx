@@ -2,27 +2,38 @@ import React, { useState, useCallback } from 'react';
 import { GeneratorForm } from './components/GeneratorForm';
 import { CurriculumView } from './components/CurriculumView';
 import { AppState, CurriculumSeries, GeneratorParams } from './types';
-import { generateCurriculum } from './services/geminiService';
+import { generateCurriculum } from './services/aiService';
+import { AISettings, loadSettings, saveSettings } from './services/aiSettings';
 import { Icons } from './components/Icons';
+import { SettingsPanel } from './components/SettingsPanel';
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.IDLE);
   const [curriculum, setCurriculum] = useState<CurriculumSeries | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [settings, setSettings] = useState<AISettings>(loadSettings);
+  const [showSettings, setShowSettings] = useState(false);
+
+  const handleSaveSettings = (next: AISettings) => {
+    setSettings(next);
+    saveSettings(next);
+    setShowSettings(false);
+  };
 
   const handleGenerate = useCallback(async (params: GeneratorParams) => {
     setAppState(AppState.GENERATING);
     setError(null);
     try {
-      const data = await generateCurriculum(params);
+      const data = await generateCurriculum(params, settings);
       setCurriculum(data);
       setAppState(AppState.VIEWING);
     } catch (err) {
       console.error(err);
-      setError("Something went wrong while crafting your series. Please check your connection and try again.");
+      const detail = err instanceof Error ? err.message : '';
+      setError(`Something went wrong while crafting your series. ${detail}`.trim());
       setAppState(AppState.ERROR);
     }
-  }, []);
+  }, [settings]);
 
   const resetApp = () => {
     setAppState(AppState.IDLE);
@@ -41,11 +52,13 @@ const App: React.FC = () => {
               <Icons.Layers className="w-8 h-8 text-black" />
               <span>PARABLE</span>
             </div>
-            <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-500">
-              <a href="#" className="hover:text-black transition-colors">Library</a>
-              <a href="#" className="hover:text-black transition-colors">Resources</a>
-              <a href="#" className="hover:text-black transition-colors">About</a>
-            </div>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-black transition-colors"
+            >
+              <Icons.Settings className="w-4 h-4" />
+              <span>AI Server</span>
+            </button>
           </nav>
 
           {/* Main Content Area */}
@@ -70,12 +83,20 @@ const App: React.FC = () => {
                     <div>
                       <h3 className="font-bold text-red-800 text-sm">Generation Failed</h3>
                       <p className="text-red-600 text-sm">{error}</p>
-                      <button 
-                        onClick={() => setAppState(AppState.IDLE)}
-                        className="text-xs font-bold text-red-800 underline mt-2"
-                      >
-                        Try Again
-                      </button>
+                      <div className="flex gap-4">
+                        <button 
+                          onClick={() => setAppState(AppState.IDLE)}
+                          className="text-xs font-bold text-red-800 underline mt-2"
+                        >
+                          Try Again
+                        </button>
+                        <button 
+                          onClick={() => setShowSettings(true)}
+                          className="text-xs font-bold text-red-800 underline mt-2"
+                        >
+                          Check AI Server Settings
+                        </button>
+                      </div>
                     </div>
                  </div>
               )}
@@ -105,6 +126,14 @@ const App: React.FC = () => {
         <CurriculumView 
           data={curriculum} 
           onReset={resetApp} 
+        />
+      )}
+
+      {showSettings && (
+        <SettingsPanel
+          settings={settings}
+          onSave={handleSaveSettings}
+          onClose={() => setShowSettings(false)}
         />
       )}
     </div>

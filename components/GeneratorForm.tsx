@@ -130,7 +130,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({ onSubmit, isLoadin
             Create Series Outline
           </Button>
           <p className="text-center text-xs text-gray-400 mt-4">
-            Powered by Gemini • Generates outlines, questions & activities
+            Powered by your self-hosted AI • Generates outlines, questions & activities
           </p>
         </div>
 
