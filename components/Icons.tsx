@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { BookOpen, Users, Calendar, Sparkles, ChevronRight, ArrowLeft, Printer, Share2, Layers, Target, Anchor, MessageCircle, Zap, Book, Download, FileText } from 'lucide-react';
+import { BookOpen, Users, Calendar, Sparkles, ChevronRight, ArrowLeft, Printer, Share2, Layers, Target, Anchor, MessageCircle, Zap, Book, Download, FileText, Settings, X } from 'lucide-react';
 
 export const Icons = {
   Book: BookOpen,
@@ -18,5 +18,7 @@ export const Icons = {
   Action: Zap,
   Bible: Book,
   Download: Download,
-  File: FileText
+  File: FileText,
+  Settings: Settings,
+  Close: X
 };
