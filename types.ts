@@ -53,11 +53,26 @@ export interface Section {
   parts: Part[];
 }
 
+export type SeriesColor = 'indigo' | 'sky' | 'emerald' | 'amber' | 'rose' | 'violet' | 'slate';
+
+export interface Series {
+  id: string;
+  title: string;
+  description: string;
+  audience: string;
+  color: SeriesColor;
+  startDate: string; // YYYY-MM-DD; week N is scheduled startDate + 7 * (N - 1)
+  bigIdea: string;
+  memoryVerse: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface Service {
   id: string;
   title: string;
   audience: string;
-  series: string;
+  seriesId: string | null;
   week: number | null;
   date: string; // YYYY-MM-DD
   startTime: string; // HH:MM, 24h
@@ -74,11 +89,13 @@ export interface Service {
 
 export interface Database {
   version: 1;
+  series: Series[];
   services: Service[];
   library: Part[];
 }
 
 export type PrintScope =
+  | { kind: 'series'; seriesId: string }
   | { kind: 'guide' }
   | { kind: 'run-sheet' }
   | { kind: 'supplies' }

@@ -1,4 +1,4 @@
-import { LinkItem, Part, PartType, Section, Service, Supply, SupplyPer } from '../types';
+import { LinkItem, Part, PartType, Section, Series, SeriesColor, Service, Supply, SupplyPer } from '../types';
 import { PART_TYPE_KEYS } from './partTypes';
 
 export const uid = (): string =>
@@ -75,7 +75,7 @@ export const newService = (s: Partial<Record<keyof Service, unknown>> = {}): Ser
     id: str(s.id) || uid(),
     title: str(s.title, 'Untitled service') || 'Untitled service',
     audience: str(s.audience, 'Kids'),
-    series: str(s.series),
+    seriesId: str(s.seriesId) || null,
     week: typeof s.week === 'number' ? s.week : null,
     date: str(s.date) || todayISO(),
     startTime: str(s.startTime, '10:00'),
@@ -86,6 +86,24 @@ export const newService = (s: Partial<Record<keyof Service, unknown>> = {}): Ser
     scripture: str(s.scripture),
     checkedSupplies: Array.isArray(s.checkedSupplies) ? s.checkedSupplies.filter((x): x is string => typeof x === 'string') : [],
     sections: Array.isArray(s.sections) ? s.sections.map((x) => newSection(x ?? {})) : [],
+    createdAt: num(s.createdAt, now),
+    updatedAt: num(s.updatedAt, now),
+  };
+};
+
+export const SERIES_COLORS: SeriesColor[] = ['indigo', 'sky', 'emerald', 'amber', 'rose', 'violet', 'slate'];
+
+export const newSeries = (s: Partial<Record<keyof Series, unknown>> = {}): Series => {
+  const now = Date.now();
+  return {
+    id: str(s.id) || uid(),
+    title: str(s.title, 'Untitled series') || 'Untitled series',
+    description: str(s.description),
+    audience: str(s.audience, 'Kids'),
+    color: (SERIES_COLORS as string[]).includes(str(s.color)) ? (s.color as SeriesColor) : 'indigo',
+    startDate: str(s.startDate) || todayISO(),
+    bigIdea: str(s.bigIdea),
+    memoryVerse: str(s.memoryVerse),
     createdAt: num(s.createdAt, now),
     updatedAt: num(s.updatedAt, now),
   };

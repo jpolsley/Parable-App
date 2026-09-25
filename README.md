@@ -1,19 +1,20 @@
-# Parable — Service Builder
+# Parable — Series Builder
 
-Plan kids and youth ministry services section by section and part by part: scripts, instructions,
+Plan kids and youth ministry teaching as series, week by week. Each week is built section by section and part by part: scripts, instructions,
 supplies, media, inclusion tips, and leader notes. Print a polished leader guide when you're done.
 AI is an optional assistant powered by **your own self-hosted model**.
 
 ## What you can do
 
+- **Series first.** Create a series with a title, audience, color, theme, memory verse, number of weeks, and a weekly layout. Every week is created and scheduled for you. Drag weeks to reorder them; numbers and dates follow. Add a week from last week's layout, duplicate a week, or print a series overview.
+- **Stand-alone services** for one-off events, which you can move into a series later.
 - **Dashboard.** See your next service, with a countdown, how many parts have content, and supplies gathered. It also shows upcoming services, parts that still need content in the next two weeks, series progress, and recent edits.
-- **Build services** from templates (Kids Service, Youth Night, Preschool) or from scratch.
+- **Weekly layouts** from templates (Kids Service, Youth Night, Preschool) or from scratch.
 - **Drag to reorder** sections and parts, move parts between sections, hide parts without deleting them.
 - **Live run times.** Set a start time and every section and part shows its clock time; totals update as you edit.
 - **Supplies that scale.** Enter quantities "per kid" or "per group" and the supply list totals them for your class size, with a checklist.
 - **Parts library.** Save a part (weekly welcome, favorite game) and insert it into any service.
 - **Print** a full leader guide, a one-page run sheet, a supply list, or a single section or part. Page breaks are yours to set.
-- **Series.** Group services by series and week. Duplicate a service to start next week's.
 - **Your data stays yours.** Everything saves automatically in your browser. Export a file or back up everything, then import it on another device.
 
 ### AI assistant (optional, off by default)
@@ -24,7 +25,7 @@ Parable works with no AI at all. When you turn it on, AI adds small buttons. It 
 - Suggest supplies for a part
 - Suggest new parts for a section
 - Write a first draft of a whole service from a template
-- Draft a multi-week series, one service per week
+- Draft a whole series: outline, theme, memory verse, and every week
 - Ask questions about the service you're building
 
 ## Use it

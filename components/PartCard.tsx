@@ -73,7 +73,7 @@ export const PartCard: React.FC<PartCardProps> = ({ service, section, part, star
       ref={setNodeRef}
       id={`part-${part.id}`}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`scroll-mt-4 bg-white border rounded-lg ${isDragging ? 'relative z-20 shadow-xl border-black' : 'border-gray-200'} ${part.hidden ? 'opacity-55' : ''}`}
+      className={`scroll-mt-4 bg-white border rounded-xl ${isDragging ? 'relative z-20 shadow-lift border-accent' : 'border-line'} ${part.hidden ? 'opacity-55' : ''}`}
     >
       <div className="flex items-start gap-1 p-2 pr-1">
         <button type="button" className="p-1.5 mt-0.5 text-gray-400 hover:text-black cursor-grab active:cursor-grabbing touch-none" aria-label={`Reorder ${part.title}`} {...attributes} {...listeners}>
@@ -82,7 +82,7 @@ export const PartCard: React.FC<PartCardProps> = ({ service, section, part, star
         <button type="button" onClick={() => setOpen(!open)} className="flex-1 min-w-0 text-left py-1" aria-expanded={open}>
           <div className="flex items-center gap-2 flex-wrap">
             {open ? <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />}
-            <span className="font-semibold text-charcoal">{part.title}</span>
+            <span className="font-semibold text-ink">{part.title}</span>
             <TypeChip type={part.type} />
           </div>
           <div className="flex items-center gap-2 mt-1 ml-6 text-xs text-gray-500 flex-wrap">
@@ -141,10 +141,10 @@ export const PartCard: React.FC<PartCardProps> = ({ service, section, part, star
                 type="button"
                 aria-selected={tab === t.id}
                 onClick={() => setTab(t.id)}
-                className={`relative px-3 py-2 text-sm whitespace-nowrap border-b-2 -mb-px ${tab === t.id ? 'border-black text-black font-semibold' : 'border-transparent text-gray-500 hover:text-black'}`}
+                className={`relative px-3 py-2 text-sm whitespace-nowrap border-b-2 -mb-px ${tab === t.id ? 'border-accent text-accent font-semibold' : 'border-transparent text-gray-500 hover:text-ink'}`}
               >
                 {t.label}
-                {hasContent(part, t.id) && <span className="ml-1.5 inline-block w-1.5 h-1.5 rounded-full bg-brand-orange align-middle" />}
+                {hasContent(part, t.id) && <span className="ml-1.5 inline-block w-1.5 h-1.5 rounded-full bg-accent align-middle" />}
               </button>
             ))}
           </div>
@@ -217,7 +217,7 @@ const SupplyEditor: React.FC<{ service: Service; part: Part; onChange: (s: Suppl
       <div className="flex flex-wrap items-center gap-3">
         <Button type="button" size="sm" variant="outline" icon={Plus} onClick={() => onChange([...part.supplies, newSupply({ name: '' })])}>Add supply</Button>
         {aiSettings.enabled && (
-          <button type="button" onClick={suggest} disabled={loading} className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-blue hover:underline disabled:opacity-50">
+          <button type="button" onClick={suggest} disabled={loading} className="inline-flex items-center gap-1.5 text-xs font-medium text-accent hover:underline disabled:opacity-50">
             <Sparkles className="w-3.5 h-3.5" /> {loading ? 'Thinking…' : 'Suggest supplies with AI'}
           </button>
         )}
@@ -225,7 +225,7 @@ const SupplyEditor: React.FC<{ service: Service; part: Part; onChange: (s: Suppl
       <p className="text-xs text-gray-400">"Per kid" and "per group" quantities scale with the class size ({service.classSize}) and group count ({service.groupCount}) in Details.</p>
       {error && <p className="text-xs text-red-700">{error}</p>}
       {suggested && (
-        <div className="rounded-md border border-brand-blue/30 bg-brand-blue/5 p-3 space-y-2">
+        <div className="rounded-md border border-accent/30 bg-accent/5 p-3 space-y-2">
           {suggested.length === 0 ? (
             <p className="text-sm text-gray-600">No supplies suggested.</p>
           ) : (

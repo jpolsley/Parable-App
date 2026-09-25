@@ -43,14 +43,14 @@ export const AIAssist: React.FC<AIAssistProps> = ({ label, placeholder, hasExist
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-blue hover:underline">
+      <button type="button" onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5 text-xs font-medium text-accent hover:underline">
         <Sparkles className="w-3.5 h-3.5" /> {label}
       </button>
     );
   }
 
   return (
-    <div className="rounded-md border border-brand-blue/30 bg-brand-blue/5 p-3 space-y-2">
+    <div className="rounded-md border border-accent/30 bg-accent/5 p-3 space-y-2">
       <div className="flex gap-2">
         <input
           className={inputClass}

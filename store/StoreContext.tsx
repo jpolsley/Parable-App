@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { Database, Part, PrintScope, Service } from '../types';
-import { clonePart, newPart, newService } from '../lib/factory';
+import { Database, Part, PrintScope, Series, Service } from '../types';
+import { clonePart, newPart, newSeries, newService } from '../lib/factory';
+import { migrateLegacySeries, reschedule, weeksOf } from '../lib/series';
 import { AISettings, loadSettings, saveSettings } from '../services/aiSettings';
 import { testConnection } from '../services/aiService';
 
@@ -11,16 +12,16 @@ const loadDb = (): Database => {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const data = JSON.parse(raw);
-      return {
-        version: 1,
-        services: Array.isArray(data.services) ? data.services.map(newService) : [],
-        library: Array.isArray(data.library) ? data.library.map(newPart) : [],
-      };
+      const { services, series } = migrateLegacySeries(
+        Array.isArray(data.services) ? data.services : [],
+        Array.isArray(data.series) ? data.series.map(newSeries) : [],
+      );
+      return { version: 1, series, services, library: Array.isArray(data.library) ? data.library.map(newPart) : [] };
     }
   } catch {
     // unreadable storage: start fresh rather than crash
   }
-  return { version: 1, services: [], library: [] };
+  return { version: 1, series: [], services: [], library: [] };
 };
 
 export type SaveState = 'saved' | 'saving' | 'error';
@@ -43,6 +44,12 @@ interface Store {
   addServices: (services: Service[]) => void;
   updateService: (id: string, fn: (s: Service) => Service) => void;
   deleteService: (id: string) => void;
+  addSeries: (series: Series, weeks: Service[]) => void;
+  updateSeries: (id: string, fn: (s: Series) => Series) => void;
+  deleteSeries: (id: string) => void;
+  reorderWeeks: (seriesId: string, orderedIds: string[]) => void;
+  addWeeks: (seriesId: string, weeks: Service[]) => void;
+  moveToSeries: (serviceId: string, seriesId: string | null) => void;
   saveToLibrary: (part: Part) => void;
   removeFromLibrary: (id: string) => void;
   importDatabase: (data: Partial<Database>) => number;
@@ -118,15 +125,72 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const index = dbRef.current.services.findIndex((s) => s.id === id);
     const removed = dbRef.current.services[index];
     if (!removed) return;
-    setDb((d) => ({ ...d, services: d.services.filter((s) => s.id !== id) }));
+    const seriesId = removed.seriesId;
+    const order = seriesId ? weeksOf(dbRef.current, seriesId).map((s) => s.id) : [];
+    const renumber = (d: Database) => (seriesId ? reschedule(d, seriesId) : d);
+    setDb((d) => renumber({ ...d, services: d.services.filter((s) => s.id !== id) }));
     toast(`Deleted "${removed.title}"`, () =>
       setDb((cur) => {
         const services = [...cur.services];
         services.splice(Math.min(index, services.length), 0, removed);
-        return { ...cur, services };
+        if (!seriesId) return { ...cur, services };
+        // Put the week back in its old slot; weeks added since then go at the end.
+        const present = new Set(services.filter((s) => s.seriesId === seriesId).map((s) => s.id));
+        const restored = [...order.filter((id) => present.has(id)), ...[...present].filter((id) => !order.includes(id))];
+        return reschedule({ ...cur, services }, seriesId, restored);
       }),
     );
   }, [toast]);
+
+  const addSeries = useCallback((series: Series, weeks: Service[]) => {
+    setDb((d) => reschedule({ ...d, series: [series, ...d.series], services: [...weeks.map((w) => ({ ...w, seriesId: series.id })), ...d.services] }, series.id, weeks.map((w) => w.id)));
+  }, []);
+
+  const updateSeries = useCallback((id: string, fn: (s: Series) => Series) => {
+    setDb((d) => {
+      const before = d.series.find((s) => s.id === id);
+      const next = { ...d, series: d.series.map((s) => (s.id === id ? { ...fn(s), updatedAt: Date.now() } : s)) };
+      const after = next.series.find((s) => s.id === id);
+      return before && after && before.startDate !== after.startDate ? reschedule(next, id) : next;
+    });
+  }, []);
+
+  const deleteSeries = useCallback((id: string) => {
+    const snapshot = dbRef.current;
+    const series = snapshot.series.find((s) => s.id === id);
+    if (!series) return;
+    setDb((d) => ({ ...d, series: d.series.filter((s) => s.id !== id), services: d.services.filter((s) => s.seriesId !== id) }));
+    const removedWeeks = snapshot.services.filter((s) => s.seriesId === id);
+    toast(`Deleted "${series.title}" and its ${removedWeeks.length} weeks`, () =>
+      setDb((cur) => ({ ...cur, series: [series, ...cur.series], services: [...removedWeeks, ...cur.services] })),
+    );
+  }, [toast]);
+
+  const reorderWeeks = useCallback((seriesId: string, orderedIds: string[]) => {
+    setDb((d) => reschedule(d, seriesId, orderedIds));
+  }, []);
+
+  // Move a service into another series (as its last week) or make it stand-alone; renumber both series.
+  const moveToSeries = useCallback((serviceId: string, seriesId: string | null) => {
+    setDb((d) => {
+      const service = d.services.find((s) => s.id === serviceId);
+      if (!service || service.seriesId === seriesId) return d;
+      const from = service.seriesId;
+      const targetOrder = seriesId ? [...weeksOf(d, seriesId).map((s) => s.id), serviceId] : [];
+      let next: Database = { ...d, services: d.services.map((s) => (s.id === serviceId ? { ...s, seriesId, week: seriesId ? s.week : null } : s)) };
+      if (from) next = reschedule(next, from);
+      if (seriesId) next = reschedule(next, seriesId, targetOrder);
+      return next;
+    });
+  }, []);
+
+  const addWeeks = useCallback((seriesId: string, weeks: Service[]) => {
+    setDb((d) => {
+      const existing = d.services.filter((s) => s.seriesId === seriesId).sort((a, b) => (a.week ?? 0) - (b.week ?? 0)).map((s) => s.id);
+      const next = { ...d, services: [...d.services, ...weeks.map((w) => ({ ...w, seriesId }))] };
+      return reschedule(next, seriesId, [...existing, ...weeks.map((w) => w.id)]);
+    });
+  }, []);
 
   const saveToLibrary = useCallback((part: Part) => {
     setDb((d) => ({ ...d, library: [clonePart(part), ...d.library] }));
@@ -139,18 +203,27 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Merge a backup or a single exported service. Existing ids are replaced.
   const importDatabase = useCallback((data: Partial<Database>) => {
-    const services = (data.services ?? []).map(newService);
+    const { services, series } = migrateLegacySeries(
+      (data.services ?? []) as unknown as Record<string, unknown>[],
+      (data.series ?? []).map(newSeries),
+    );
     const library = (data.library ?? []).map(newPart);
     setDb((d) => {
       const ids = new Set(services.map((s) => s.id));
+      const seriesIds = new Set(series.map((s) => s.id));
       const libIds = new Set(library.map((p) => p.id));
+      const allSeries = [...series, ...d.series.filter((s) => !seriesIds.has(s.id))];
+      const known = new Set(allSeries.map((s) => s.id));
+      // A single exported week may point at a series this browser doesn't have: import it as stand-alone.
+      const imported = services.map((s) => (s.seriesId && !known.has(s.seriesId) ? { ...s, seriesId: null } : s));
       return {
         ...d,
-        services: [...services, ...d.services.filter((s) => !ids.has(s.id))],
+        series: allSeries,
+        services: [...imported, ...d.services.filter((s) => !ids.has(s.id))],
         library: [...library, ...d.library.filter((p) => !libIds.has(p.id))],
       };
     });
-    return services.length + library.length;
+    return series.length + services.length + library.length;
   }, []);
 
   const setAiSettings = useCallback((s: AISettings) => {
@@ -193,7 +266,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <StoreContext.Provider
       value={{
-        db, saveState, addServices, updateService, deleteService, saveToLibrary, removeFromLibrary, importDatabase,
+        db, saveState, addServices, updateService, deleteService, addSeries, updateSeries, deleteSeries, reorderWeeks, addWeeks, moveToSeries, saveToLibrary, removeFromLibrary, importDatabase,
         toasts, toast, dismissToast, aiSettings, aiStatus, recheckAi, setAiSettings, settingsOpen, setSettingsOpen, printJob, print,
       }}
     >

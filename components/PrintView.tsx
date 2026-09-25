@@ -1,15 +1,21 @@
 import React from 'react';
-import { Part, Section, Service } from '../types';
+import { Part, Section, Series, Service } from '../types';
 import { PART_TYPES } from '../lib/partTypes';
 import { aggregateSupplies, PER_LABELS, supplyTotal } from '../lib/supplies';
 import { buildSchedule, formatDate, formatDuration, sectionMinutes, serviceMinutes, visibleParts } from '../lib/time';
 import { useStore } from '../store/StoreContext';
+import { weeksOf } from '../lib/series';
 
 // Rendered only while printing; the app shell is hidden with print:hidden.
 export const PrintRoot: React.FC = () => {
   const { printJob, db } = useStore();
+  if (printJob?.scope.kind === 'series') {
+    const series = db.series.find((s) => s.id === (printJob.scope as { seriesId: string }).seriesId);
+    return series ? <SeriesOverview series={series} weeks={weeksOf(db, series.id)} /> : null;
+  }
   const service = printJob && db.services.find((s) => s.id === printJob.serviceId);
   if (!printJob || !service) return null;
+  const seriesTitle = service.seriesId ? db.series.find((s) => s.id === service.seriesId)?.title : undefined;
   const schedule = buildSchedule(service);
   const { scope } = printJob;
 
@@ -42,9 +48,9 @@ export const PrintRoot: React.FC = () => {
     <div className="hidden print:block text-black bg-white text-[11pt] leading-snug">
       <header className="border-b-4 border-black pb-3 mb-5">
         <p className="text-[9pt] uppercase tracking-widest text-gray-600">
-          {[service.series, service.week && `Week ${service.week}`, service.audience].filter(Boolean).join(' · ')}
+          {[seriesTitle, seriesTitle && service.week && `Week ${service.week}`, service.audience].filter(Boolean).join(' · ')}
         </p>
-        <h1 className="font-serif text-[24pt] leading-tight">{service.title}</h1>
+        <h1 className="font-display text-[24pt] leading-tight">{service.title}</h1>
         <p className="text-[10pt] text-gray-700 mt-1">
           {formatDate(service.date)} · {formatDuration(serviceMinutes(service))} · {service.classSize} kids
         </p>
@@ -61,9 +67,40 @@ export const PrintRoot: React.FC = () => {
   );
 };
 
+const SeriesOverview: React.FC<{ series: Series; weeks: Service[] }> = ({ series, weeks }) => (
+  <div className="hidden print:block text-black bg-white text-[11pt] leading-snug">
+    <header className="border-b-4 border-black pb-3 mb-5">
+      <p className="text-[9pt] uppercase tracking-widest text-gray-600">{series.audience} · {weeks.length}-week series</p>
+      <h1 className="font-display text-[26pt] leading-tight">{series.title}</h1>
+      {weeks.length > 0 && <p className="text-[10pt] text-gray-700 mt-1">{formatDate(weeks[0].date)} – {formatDate(weeks[weeks.length - 1].date)}</p>}
+      {series.description && <p className="mt-3">{series.description}</p>}
+      {(series.bigIdea || series.memoryVerse) && (
+        <div className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[10pt]">
+          {series.bigIdea && <><b>Theme</b><span>{series.bigIdea}</span></>}
+          {series.memoryVerse && <><b>Memory verse</b><span className="italic">{series.memoryVerse}</span></>}
+        </div>
+      )}
+    </header>
+    {weeks.map((w) => (
+      <article key={w.id} className="mb-5 break-inside-avoid border-b border-gray-300 pb-4">
+        <h2 className="font-bold text-[13pt] flex justify-between gap-4">
+          <span>Week {w.week}: {w.title}</span>
+          <span className="font-normal text-[10pt] whitespace-nowrap">{formatDate(w.date)}</span>
+        </h2>
+        <div className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[10pt]">
+          {w.scripture && <><b>Scripture</b><span>{w.scripture}</span></>}
+          {w.bigIdea && <><b>Big idea</b><span>{w.bigIdea}</span></>}
+          {w.keyVerse && <><b>Key verse</b><span className="italic">{w.keyVerse}</span></>}
+        </div>
+        <p className="text-[9pt] text-gray-600 mt-1">{w.sections.filter((s) => !s.hidden).map((s) => s.title).join(' → ')} · {formatDuration(serviceMinutes(w))}</p>
+      </article>
+    ))}
+  </div>
+);
+
 const SectionBlock: React.FC<{ service: Service; section: Section; schedule: Record<string, string> }> = ({ service, section, schedule }) => (
   <section className={`mb-6 ${section.pageBreak ? 'break-after-page' : ''}`}>
-    <h2 className="font-serif text-[16pt] border-b-2 border-black pb-1 mb-3 flex justify-between break-after-avoid">
+    <h2 className="font-display text-[16pt] border-b-2 border-black pb-1 mb-3 flex justify-between break-after-avoid">
       <span>{section.title}</span>
       <span className="font-sans text-[10pt] font-semibold self-end">
         {schedule[section.id] && `${schedule[section.id]} · `}{formatDuration(sectionMinutes(section))}
@@ -133,7 +170,7 @@ const RunSheet: React.FC<{ service: Service; schedule: Record<string, string> }>
 
 const SupplyList: React.FC<{ service: Service }> = ({ service }) => (
   <div>
-    <h2 className="font-serif text-[16pt] border-b-2 border-black pb-1 mb-3">Supplies for {service.classSize} kids, {service.groupCount} groups</h2>
+    <h2 className="font-display text-[16pt] border-b-2 border-black pb-1 mb-3">Supplies for {service.classSize} kids, {service.groupCount} groups</h2>
     <ul className="columns-2 gap-8 text-[10.5pt]">
       {aggregateSupplies(service).map((l) => (
         <li key={l.key} className="break-inside-avoid flex gap-2 py-0.5">
