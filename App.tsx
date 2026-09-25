@@ -8,7 +8,7 @@ import { SeriesPage } from './components/SeriesPage';
 import { ServiceEditor } from './components/ServiceEditor';
 import { LibraryPage } from './components/LibraryPage';
 import { SettingsPanel } from './components/SettingsPanel';
-import { PrintRoot } from './components/PrintView';
+import { PrintRoot } from './components/print/PrintView';
 
 const SaveIndicator: React.FC = () => {
   const { saveState } = useStore();

@@ -1,6 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import '@fontsource-variable/inter';
+import '@fontsource-variable/plus-jakarta-sans';
+import '@fontsource-variable/source-serif-4';
+import '@fontsource-variable/source-serif-4/opsz-italic.css';
 import './index.css';
 
 const rootElement = document.getElementById('root');

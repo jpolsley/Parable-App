@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --color-canvas: #F5F6F8;
   --color-line: #E3E6EB;
   --color-ink: #0F172A;
@@ -25,11 +25,3 @@
   }
 }
 
-@media print {
-  @page {
-    margin: 1.5cm;
-  }
-  body {
-    background: white;
-  }
-}

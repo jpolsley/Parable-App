@@ -251,14 +251,23 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const print = useCallback((serviceId: string, scope: PrintScope) => setPrintJob({ serviceId, scope }), []);
 
-  // Print once the print view has rendered, then clear it.
+  // Print once the print view has rendered and its fonts have loaded (they're only fetched when first used), then clear it.
   useEffect(() => {
     if (!printJob) return;
+    let cancelled = false;
     const done = () => setPrintJob(null);
     window.addEventListener('afterprint', done, { once: true });
-    const frame = requestAnimationFrame(() => window.print());
+    const faces = [
+      "400 12pt 'Source Serif 4 Variable'", "italic 400 12pt 'Source Serif 4 Variable'",
+      "400 12pt 'Inter Variable'", "700 12pt 'Inter Variable'", "800 12pt 'Plus Jakarta Sans Variable'",
+    ];
+    const fontsReady = Promise.all(faces.map((f) => document.fonts.load(f).catch(() => null))).then(() => document.fonts.ready);
+    const timeout = new Promise((resolve) => setTimeout(resolve, 2500));
+    Promise.race([fontsReady, timeout]).then(() => {
+      if (!cancelled) requestAnimationFrame(() => window.print());
+    });
     return () => {
-      cancelAnimationFrame(frame);
+      cancelled = true;
       window.removeEventListener('afterprint', done);
     };
   }, [printJob]);

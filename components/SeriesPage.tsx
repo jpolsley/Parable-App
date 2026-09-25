@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ArrowLeft, CalendarDays, Copy, Download, FileText, GripVertical, Layers, Plus, Printer, Trash2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, CalendarDays, Copy, Download, FileText, GripVertical, Layers, Plus, Printer, Scissors, Trash2 } from 'lucide-react';
 import { Service } from '../types';
 import { cloneService, newSeries, todayISO } from '../lib/factory';
 import { downloadJson, slug } from '../lib/files';
@@ -82,7 +82,11 @@ export const SeriesPage: React.FC<{ seriesId: string }> = ({ seriesId }) => {
           </div>
           <div className="flex gap-2 shrink-0">
             <Button icon={Plus} onClick={() => setAddOpen(true)}>Add week</Button>
-            <Button variant="outline" icon={Printer} onClick={() => print('', { kind: 'series', seriesId: series.id })}>Print overview</Button>
+            <Menu trigger={<Button variant="outline" icon={Printer}>Print</Button>}>
+              <MenuItem icon={BookOpen} onClick={() => print('', { kind: 'series-book', seriesId: series.id })}>Series book (everything)</MenuItem>
+              <MenuItem icon={FileText} onClick={() => print('', { kind: 'series', seriesId: series.id })}>Cover + overview</MenuItem>
+              <MenuItem icon={Scissors} onClick={() => print('', { kind: 'series-takehome', seriesId: series.id })}>All take-home cards</MenuItem>
+            </Menu>
             <Menu label="Series actions">
               <MenuItem icon={Copy} onClick={duplicateSeries}>Duplicate series</MenuItem>
               <MenuItem icon={Download} onClick={() => downloadJson(`${slug(series.title)}.parable.json`, { version: 1, series: [series], services: weeks, library: [] })}>Export series</MenuItem>
