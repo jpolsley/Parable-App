@@ -6,6 +6,7 @@ AI is an optional assistant powered by **your own self-hosted model**.
 
 ## What you can do
 
+- **Dashboard.** See your next service, with a countdown, how many parts have content, and supplies gathered. It also shows upcoming services, parts that still need content in the next two weeks, series progress, and recent edits.
 - **Build services** from templates (Kids Service, Youth Night, Preschool) or from scratch.
 - **Drag to reorder** sections and parts, move parts between sections, hide parts without deleting them.
 - **Live run times.** Set a start time and every section and part shows its clock time; totals update as you edit.
@@ -15,9 +16,9 @@ AI is an optional assistant powered by **your own self-hosted model**.
 - **Series.** Group services by series and week. Duplicate a service to start next week's.
 - **Your data stays yours.** Everything saves automatically in your browser. Export a file or back up everything, then import it on another device.
 
-### AI assistant (optional)
+### AI assistant (optional, off by default)
 
-When it's turned on, AI adds small buttons. It never changes anything until you click **Use this**:
+Parable works with no AI at all. When you turn it on, AI adds small buttons. It never changes anything until you click **Use this**:
 
 - Draft or improve a part's script, instructions, inclusion tips, or leader notes
 - Suggest supplies for a part
@@ -29,7 +30,7 @@ When it's turned on, AI adds small buttons. It never changes anything until you 
 ## Use it
 
 1. Open the GitHub Pages site (`https://<your-user>.github.io/Parable-App/`).
-2. Click **AI** in the top-right, turn on the helpers, and enter:
+2. To use AI (optional), click **AI off** in the top-right, turn on the helpers, and enter:
    - **Base URL** — e.g. `http://localhost:11434/v1` (Ollama) or `http://localhost:1234/v1` (LM Studio)
    - **Model** — e.g. `llama3.1`, `qwen2.5:14b`, `mistral-nemo`
    - **API Key** — only if your server requires one

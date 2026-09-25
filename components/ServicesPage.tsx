@@ -9,7 +9,7 @@ import { useStore } from '../store/StoreContext';
 import { NewServiceDialog, SeriesDialog } from './NewServiceDialog';
 import { Button, EmptyState, Menu, MenuDivider, MenuItem, inputClass } from './ui';
 
-export const Dashboard: React.FC = () => {
+export const ServicesPage: React.FC = () => {
   const { db, addServices, deleteService, importDatabase, toast, aiSettings } = useStore();
   const [query, setQuery] = useState('');
   const [newOpen, setNewOpen] = useState(false);
@@ -41,14 +41,9 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-6 pb-24">
-      <section className="py-10 md:py-14">
-        <h1 className="text-4xl md:text-6xl font-serif leading-[0.95] tracking-tight">
-          Build the service <br />
-          <span className="text-gray-400 italic">that tells the story.</span>
-        </h1>
-        <p className="text-lg text-gray-600 mt-4 max-w-2xl">
-          Plan every section, script, and supply list. Reorder parts by dragging them, and print a leader guide when you're done. AI can help when you ask it to.
-        </p>
+      <section className="py-8 md:py-10">
+        <h1 className="text-4xl md:text-5xl font-serif">Services</h1>
+        <p className="text-gray-600 mt-2">Every service you've built, grouped by series.</p>
         <div className="flex flex-wrap gap-3 mt-6">
           <Button icon={Plus} onClick={() => setNewOpen(true)}>New service</Button>
           {aiSettings.enabled && <Button variant="ai" icon={Sparkles} onClick={() => setSeriesOpen(true)}>Draft a series with AI</Button>}

@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react';
 
-export type Route = { name: 'home' } | { name: 'library' } | { name: 'service'; id: string };
+export type Route =
+  | { name: 'home' }
+  | { name: 'services' }
+  | { name: 'library' }
+  | { name: 'service'; id: string; partId?: string };
 
 const parse = (hash: string): Route => {
-  const match = /^#\/s\/(.+)$/.exec(hash);
-  if (match) return { name: 'service', id: decodeURIComponent(match[1]) };
+  const match = /^#\/s\/([^/]+)(?:\/p\/(.+))?$/.exec(hash);
+  if (match) return { name: 'service', id: decodeURIComponent(match[1]), partId: match[2] && decodeURIComponent(match[2]) };
+  if (hash === '#/services') return { name: 'services' };
   if (hash === '#/library') return { name: 'library' };
   return { name: 'home' };
 };

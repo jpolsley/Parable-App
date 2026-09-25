@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { ArrowLeft, Clock, Copy, Download, FileText, LayoutList, Package, Plus, Printer, Trash2, Users } from 'lucide-react';
@@ -13,21 +13,30 @@ import { SectionActions, SectionCard } from './SectionCard';
 import { SidePanel } from './SidePanel';
 import { Button, EmptyState, Menu, MenuDivider, MenuItem } from './ui';
 
-export const ServiceEditor: React.FC<{ serviceId: string }> = ({ serviceId }) => {
+export const ServiceEditor: React.FC<{ serviceId: string; focusPartId?: string }> = ({ serviceId, focusPartId }) => {
   const { db, updateService, addServices, deleteService, toast, print } = useStore();
   const service = db.services.find((s) => s.id === serviceId);
-  const [openPartIds, setOpenPartIds] = useState<Set<string>>(new Set());
+  const [openPartIds, setOpenPartIds] = useState<Set<string>>(() => new Set(focusPartId ? [focusPartId] : []));
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
   const schedule = useMemo(() => (service ? buildSchedule(service) : {}), [service]);
 
+  // Arriving from a dashboard link: expand that part's section and scroll to it.
+  useEffect(() => {
+    if (!focusPartId) return;
+    const section = service?.sections.find((s) => s.parts.some((p) => p.id === focusPartId));
+    if (section?.collapsed) updateService(serviceId, (s) => ({ ...s, sections: s.sections.map((x) => (x.id === section.id ? { ...x, collapsed: false } : x)) }));
+    const t = setTimeout(() => document.getElementById(`part-${focusPartId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    return () => clearTimeout(t);
+  }, [focusPartId]);
+
   if (!service) {
     return (
       <div className="max-w-xl mx-auto py-20">
         <EmptyState icon={FileText} title="Service not found">
-          It may have been deleted. <button className="underline" onClick={() => navigate('/')}>Back to services</button>
+          It may have been deleted. <button className="underline" onClick={() => navigate('/services')}>Back to services</button>
         </EmptyState>
       </div>
     );
@@ -100,7 +109,7 @@ export const ServiceEditor: React.FC<{ serviceId: string }> = ({ serviceId }) =>
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-6 pb-24">
       <div className="flex items-center gap-2 text-sm text-gray-500 py-3">
-        <button type="button" onClick={() => navigate('/')} className="inline-flex items-center gap-1 hover:text-black">
+        <button type="button" onClick={() => navigate('/services')} className="inline-flex items-center gap-1 hover:text-black">
           <ArrowLeft className="w-4 h-4" /> Services
         </button>
         {service.series && <><span>/</span><span className="truncate">{service.series}</span></>}
@@ -135,7 +144,7 @@ export const ServiceEditor: React.FC<{ serviceId: string }> = ({ serviceId }) =>
               {allCollapsed ? 'Expand all sections' : 'Collapse all sections'}
             </MenuItem>
             <MenuDivider />
-            <MenuItem icon={Trash2} danger onClick={() => { deleteService(service.id); navigate('/'); }}>Delete service</MenuItem>
+            <MenuItem icon={Trash2} danger onClick={() => { deleteService(service.id); navigate('/services'); }}>Delete service</MenuItem>
           </Menu>
         </div>
       </header>

@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { Database, Part, PrintScope, Service } from '../types';
 import { clonePart, newPart, newService } from '../lib/factory';
 import { AISettings, loadSettings, saveSettings } from '../services/aiSettings';
+import { testConnection } from '../services/aiService';
 
 const STORAGE_KEY = 'parable.db.v1';
 
@@ -23,6 +24,7 @@ const loadDb = (): Database => {
 };
 
 export type SaveState = 'saved' | 'saving' | 'error';
+export type AIStatus = 'off' | 'checking' | 'online' | 'offline';
 
 interface Toast {
   id: number;
@@ -48,6 +50,8 @@ interface Store {
   toast: (message: string, undo?: () => void) => void;
   dismissToast: (id: number) => void;
   aiSettings: AISettings;
+  aiStatus: AIStatus;
+  recheckAi: () => void;
   setAiSettings: (s: AISettings) => void;
   settingsOpen: boolean;
   setSettingsOpen: (open: boolean) => void;
@@ -69,6 +73,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [aiSettings, setAiSettingsState] = useState<AISettings>(loadSettings);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [aiStatus, setAiStatus] = useState<AIStatus>('off');
+  const [aiCheck, setAiCheck] = useState(0);
   const [printJob, setPrintJob] = useState<PrintJob | null>(null);
   const firstRender = useRef(true);
   const dbRef = useRef(db);
@@ -152,6 +158,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     saveSettings(s);
   }, []);
 
+  // Check the AI server in the background. Informational only: nothing in the builder waits on it.
+  useEffect(() => {
+    if (!aiSettings.enabled) {
+      setAiStatus('off');
+      return;
+    }
+    let cancelled = false;
+    setAiStatus('checking');
+    testConnection(aiSettings)
+      .then(() => !cancelled && setAiStatus('online'))
+      .catch(() => !cancelled && setAiStatus('offline'));
+    return () => {
+      cancelled = true;
+    };
+  }, [aiSettings, aiCheck]);
+
+  const recheckAi = useCallback(() => setAiCheck((n) => n + 1), []);
+
   const print = useCallback((serviceId: string, scope: PrintScope) => setPrintJob({ serviceId, scope }), []);
 
   // Print once the print view has rendered, then clear it.
@@ -170,7 +194,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <StoreContext.Provider
       value={{
         db, saveState, addServices, updateService, deleteService, saveToLibrary, removeFromLibrary, importDatabase,
-        toasts, toast, dismissToast, aiSettings, setAiSettings, settingsOpen, setSettingsOpen, printJob, print,
+        toasts, toast, dismissToast, aiSettings, aiStatus, recheckAi, setAiSettings, settingsOpen, setSettingsOpen, printJob, print,
       }}
     >
       {children}
