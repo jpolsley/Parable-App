@@ -35,6 +35,7 @@ export interface Part {
   minutes: number;
   hidden: boolean;
   pageBreak: boolean;
+  optional: boolean; // "Going deeper": extra material a leader can use if there's time
   script: string;
   instructions: string;
   supplies: Supply[];
@@ -44,9 +45,13 @@ export interface Part {
   leaderNotes: string;
 }
 
+// Who a section is for: the whole room, small group leaders, or neither (arrival, games, announcements).
+export type SectionRole = 'large' | 'small' | 'other';
+
 export interface Section {
   id: string;
   title: string;
+  role: SectionRole;
   hidden: boolean;
   pageBreak: boolean;
   collapsed: boolean;
@@ -64,6 +69,7 @@ export interface Series {
   startDate: string; // YYYY-MM-DD; week N is scheduled startDate + 7 * (N - 1)
   bigIdea: string;
   memoryVerse: string;
+  leaderGuide: string; // welcome letter for the "Start here" page of the printed book
   createdAt: number;
   updatedAt: number;
 }
@@ -79,12 +85,22 @@ export interface Service {
   classSize: number;
   groupCount: number;
   bigIdea: string;
+  objectives: string; // one per line
   keyVerse: string;
   scripture: string;
   checkedSupplies: string[];
+  family: FamilyCues;
   sections: Section[];
   createdAt: number;
   updatedAt: number;
+}
+
+// Four everyday moments for parents to carry the lesson home.
+export interface FamilyCues {
+  morning: string;
+  onTheGo: string;
+  meal: string;
+  bedtime: string;
 }
 
 export interface Database {
@@ -97,8 +113,13 @@ export interface Database {
 export type PrintScope =
   | { kind: 'series-book'; seriesId: string }
   | { kind: 'series'; seriesId: string }
+  | { kind: 'series-small'; seriesId: string }
+  | { kind: 'series-family'; seriesId: string }
   | { kind: 'series-takehome'; seriesId: string }
-  | { kind: 'guide'; takeHome?: boolean }
+  | { kind: 'week' }
+  | { kind: 'lesson' }
+  | { kind: 'small' }
+  | { kind: 'family' }
   | { kind: 'takehome' }
   | { kind: 'run-sheet' }
   | { kind: 'supplies' }

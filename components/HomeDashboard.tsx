@@ -202,7 +202,7 @@ export const HomeDashboard: React.FC = () => {
   );
 };
 
-const NextUp: React.FC<{ service: Service; series?: Series; today: string; onPrint: (kind: 'guide' | 'supplies' | 'run-sheet') => void }> = ({ service, series, today, onPrint }) => {
+const NextUp: React.FC<{ service: Service; series?: Series; today: string; onPrint: (kind: 'week' | 'supplies' | 'run-sheet') => void }> = ({ service, series, today, onPrint }) => {
   const r = readiness(service);
   const sp = supplyProgress(service);
   return (
@@ -229,9 +229,9 @@ const NextUp: React.FC<{ service: Service; series?: Series; today: string; onPri
         <Meter dark value={sp.gathered} total={sp.total} label="Supplies gathered" />
       </div>
       <div className="flex flex-wrap gap-2 mt-5">
-        {(['guide', 'run-sheet', 'supplies'] as const).map((kind) => (
+        {(['week', 'run-sheet', 'supplies'] as const).map((kind) => (
           <button key={kind} type="button" onClick={() => onPrint(kind)} className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25">
-            <Printer className="w-4 h-4" /> {kind === 'guide' ? 'Leader guide' : kind === 'run-sheet' ? 'Run sheet' : 'Supply list'}
+            <Printer className="w-4 h-4" /> {kind === 'week' ? 'Full week' : kind === 'run-sheet' ? 'Run sheet' : 'Supply list'}
           </button>
         ))}
       </div>

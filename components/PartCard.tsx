@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
-  ArrowRightLeft, Bookmark, ChevronDown, ChevronRight, Copy, ExternalLink, Eye, EyeOff, GripVertical, Plus, Printer, SeparatorHorizontal, Sparkles, Trash2, X,
+  ArrowRightLeft, Bookmark, ChevronDown, Layers, ChevronRight, Copy, ExternalLink, Eye, EyeOff, GripVertical, Plus, Printer, SeparatorHorizontal, Sparkles, Trash2, X,
 } from 'lucide-react';
 import { LinkItem, Part, PartType, Section, Service, Supply } from '../types';
 import { PART_TYPES, PART_TYPE_KEYS } from '../lib/partTypes';
@@ -87,12 +87,13 @@ export const PartCard: React.FC<PartCardProps> = ({ service, section, part, star
           </div>
           <div className="flex items-center gap-2 mt-1 ml-6 text-xs text-gray-500 flex-wrap">
             {startTime && <span className="font-mono">{startTime}</span>}
-            <span>{part.minutes} min</span>
+            <span>{part.minutes} min{part.optional ? ' · optional' : ''}</span>
             {filled.length > 0 && <span className="text-gray-300">|</span>}
             {filled.map((t) => (
               <span key={t.id} className="lowercase">{t.label}</span>
             ))}
             {part.hidden && <span className="font-semibold text-gray-600">Hidden</span>}
+            {part.optional && <span className="font-semibold text-amber-700">Going deeper</span>}
           </div>
         </button>
         <IconButton icon={part.hidden ? EyeOff : Eye} label={part.hidden ? 'Show part' : 'Hide part'} onClick={() => set('hidden', !part.hidden)} />
@@ -100,6 +101,9 @@ export const PartCard: React.FC<PartCardProps> = ({ service, section, part, star
           <MenuItem icon={Copy} onClick={onDuplicate}>Duplicate</MenuItem>
           <MenuItem icon={Bookmark} onClick={() => saveToLibrary(part)}>Save to library</MenuItem>
           <MenuItem icon={Printer} onClick={() => print(service.id, { kind: 'part', sectionId: section.id, partId: part.id })}>Print this part</MenuItem>
+          <MenuItem icon={Layers} onClick={() => set('optional', !part.optional)}>
+            {part.optional ? 'Make required' : 'Mark optional (going deeper)'}
+          </MenuItem>
           <MenuItem icon={SeparatorHorizontal} onClick={() => set('pageBreak', !part.pageBreak)}>
             {part.pageBreak ? 'Remove page break after' : 'Page break after'}
           </MenuItem>

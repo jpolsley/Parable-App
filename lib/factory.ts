@@ -1,4 +1,4 @@
-import { LinkItem, Part, PartType, Section, Series, SeriesColor, Service, Supply, SupplyPer } from '../types';
+import { FamilyCues, LinkItem, Part, PartType, Section, SectionRole, Series, SeriesColor, Service, Supply, SupplyPer } from '../types';
 import { PART_TYPE_KEYS } from './partTypes';
 
 export const uid = (): string =>
@@ -51,6 +51,7 @@ export const newPart = (p: Partial<Record<keyof Part, unknown>> = {}): Part => (
   minutes: num(p.minutes, 5),
   hidden: p.hidden === true,
   pageBreak: p.pageBreak === true,
+  optional: p.optional === true,
   script: str(p.script),
   instructions: str(p.instructions),
   supplies: Array.isArray(p.supplies) ? p.supplies.map((s) => newSupply(s ?? {})) : [],
@@ -60,13 +61,27 @@ export const newPart = (p: Partial<Record<keyof Part, unknown>> = {}): Part => (
   leaderNotes: str(p.leaderNotes),
 });
 
+// Best guess from the title; the leader can change it on the section.
+export const guessRole = (title: string): SectionRole =>
+  /small|group|cabin|huddle|breakout|table/i.test(title) ? 'small'
+    : /social|arrival|hangout|welcome|pre-?service|free play|announce/i.test(title) ? 'other'
+    : 'large';
+
 export const newSection = (s: Partial<Record<keyof Section, unknown>> = {}): Section => ({
   id: str(s.id) || uid(),
   title: str(s.title, 'New section') || 'New section',
+  role: s.role === 'large' || s.role === 'small' || s.role === 'other' ? s.role : guessRole(str(s.title)),
   hidden: s.hidden === true,
   pageBreak: s.pageBreak === true,
   collapsed: s.collapsed === true,
   parts: Array.isArray(s.parts) ? s.parts.map((p) => newPart(p ?? {})) : [],
+});
+
+export const newFamily = (f: Partial<FamilyCues> = {}): FamilyCues => ({
+  morning: str(f?.morning),
+  onTheGo: str(f?.onTheGo),
+  meal: str(f?.meal),
+  bedtime: str(f?.bedtime),
 });
 
 export const newService = (s: Partial<Record<keyof Service, unknown>> = {}): Service => {
@@ -82,8 +97,10 @@ export const newService = (s: Partial<Record<keyof Service, unknown>> = {}): Ser
     classSize: num(s.classSize, 10),
     groupCount: num(s.groupCount, 2),
     bigIdea: str(s.bigIdea),
+    objectives: str(s.objectives),
     keyVerse: str(s.keyVerse),
     scripture: str(s.scripture),
+    family: newFamily(s.family as Partial<FamilyCues> | undefined),
     checkedSupplies: Array.isArray(s.checkedSupplies) ? s.checkedSupplies.filter((x): x is string => typeof x === 'string') : [],
     sections: Array.isArray(s.sections) ? s.sections.map((x) => newSection(x ?? {})) : [],
     createdAt: num(s.createdAt, now),
@@ -104,6 +121,7 @@ export const newSeries = (s: Partial<Record<keyof Series, unknown>> = {}): Serie
     startDate: str(s.startDate) || todayISO(),
     bigIdea: str(s.bigIdea),
     memoryVerse: str(s.memoryVerse),
+    leaderGuide: str(s.leaderGuide),
     createdAt: num(s.createdAt, now),
     updatedAt: num(s.updatedAt, now),
   };

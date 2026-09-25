@@ -1,4 +1,4 @@
-import { Part, Section, Series, Service, Supply } from '../types';
+import { FamilyCues, Part, Section, Series, Service, Supply } from '../types';
 import { newPart, newSection, newSeries, newService, newSupply } from '../lib/factory';
 import { PART_TYPE_KEYS, PART_TYPES } from '../lib/partTypes';
 import { AISettings } from './aiSettings';
@@ -172,6 +172,33 @@ export const draftService = async (
   return { title: service.title, bigIdea: service.bigIdea, keyVerse: service.keyVerse, scripture: service.scripture, sections: service.sections };
 };
 
+const FAMILY_ASK: Record<keyof FamilyCues, string> = {
+  morning: 'a short "wake-up" moment: a verse or truth a parent can say to their child to start the day',
+  onTheGo: 'an "on the go" moment: something to talk about, notice, or do together in the car or out and about',
+  meal: 'an "around the table" moment: one or two questions a parent can ask at a meal',
+  bedtime: 'a "lights out" moment: a short prayer or blessing a parent can pray over their child',
+};
+
+export const draftFamilyCue = (settings: AISettings, service: ServiceWithSeries, key: keyof FamilyCues, instruction: string) =>
+  chatText(settings, [
+    describeService(service),
+    '',
+    `Write ${FAMILY_ASK[key]} that reinforces this week's lesson for parents of ${service.audience}.`,
+    service.family[key] && `The current text is:\n${service.family[key]}\n\nRevise or improve it.`,
+    instruction && `Additional direction: ${instruction}`,
+    'Write it to the parent, in 1–3 sentences. Return only the text.',
+  ].filter(Boolean).join('\n'));
+
+export const draftObjectives = (settings: AISettings, service: ServiceWithSeries, instruction: string) =>
+  chatText(settings, [
+    describeService(service),
+    '',
+    `Write 3–5 learning objectives for this session, each starting with a verb and describing what ${service.audience} will know or do by the end.`,
+    service.objectives && `The current objectives are:\n${service.objectives}\n\nRevise or improve them.`,
+    instruction && `Additional direction: ${instruction}`,
+    'Return one objective per line, with no numbering or bullets.',
+  ].filter(Boolean).join('\n'));
+
 export const askAboutService = (settings: AISettings, service: Service, question: string) =>
   chatText(settings, `${describeService(service)}\n\nThe leader asks: ${question}\n\nAnswer helpfully and concisely.`);
 
@@ -189,6 +216,10 @@ interface WeekDetail {
   teaching?: string;
   discussionQuestions?: string[];
   challenge?: string;
+  icebreaker?: string;
+  prayerFocus?: string;
+  objectives?: string[];
+  family?: Partial<FamilyCues>;
   activity?: { title?: string; instructions?: string; supplies?: unknown[] };
 }
 
@@ -198,16 +229,17 @@ export const draftSeries = async (
   onProgress: (message: string) => void,
 ): Promise<{ series: Series; weeks: Service[] }> => {
   onProgress('Outlining the series…');
-  const outline = await chatJson<{ title?: string; description?: string; bigIdea?: string; memoryVerse?: string; weeks?: WeekOutline[] }>(settings, [
+  const outline = await chatJson<{ title?: string; description?: string; bigIdea?: string; memoryVerse?: string; leaderGuide?: string; weeks?: WeekOutline[] }>(settings, [
     `Outline a ${params.weeks}-week ministry series about "${params.topic}" for ${params.audience}.`,
     'Fit the topic into the larger story of the Bible.',
-    `Respond as {"title":"series title","description":"2-sentence series overview","bigIdea":"the one idea that ties the series together","memoryVerse":"verse text (reference)","weeks":[{"title":"...","scripture":"reference","bigIdea":"one sentence"}]} with exactly ${params.weeks} weeks.`,
+    `Respond as {"title":"series title","description":"2-sentence series overview","bigIdea":"the one idea that ties the series together","memoryVerse":"verse text (reference)","leaderGuide":"a warm 120-word welcome letter to volunteer leaders explaining the series goal and how to lead it","weeks":[{"title":"...","scripture":"reference","bigIdea":"one sentence"}]} with exactly ${params.weeks} weeks.`,
   ].join('\n'));
   const series = newSeries({
     title: params.title || outline.title || params.topic,
     description: outline.description,
     bigIdea: outline.bigIdea,
     memoryVerse: outline.memoryVerse,
+    leaderGuide: outline.leaderGuide,
     audience: params.audience,
     startDate: params.startDate,
     color: params.color,
@@ -222,7 +254,7 @@ export const draftSeries = async (
     const d = await chatJson<WeekDetail>(settings, [
       `Series: "${seriesTitle}" for ${params.audience}. Week ${i + 1}: "${week.title}". Scripture: ${week.scripture}. Big idea: ${week.bigIdea}.`,
       'Write the full lesson content.',
-      'Respond as {"keyVerse":"verse text (reference)","hook":"100-150 word opening story or illustration, as a script","teaching":"3 teaching points, each a headline followed by a 100-150 word script paragraph","discussionQuestions":["5 questions moving from observation to interpretation to application"],"challenge":"a specific practice for the week","activity":{"title":"...","instructions":"numbered steps","supplies":[{"name":"...","qty":1,"per":"total|person|group"}]}}',
+      'Respond as {"keyVerse":"verse text (reference)","hook":"100-150 word opening story or illustration, as a script","teaching":"3 teaching points, each a headline followed by a 100-150 word script paragraph","discussionQuestions":["5 questions moving from observation to interpretation to application"],"challenge":"a specific practice for the week","objectives":["3-4 learning objectives, each starting with a verb"],"icebreaker":"one fun small group opening question tied to the theme","prayerFocus":"one sentence on what the small group should pray for","family":{"morning":"a verse or truth a parent can say to start the day","onTheGo":"something to talk about or do in the car","meal":"a question to ask at dinner","bedtime":"a short prayer to pray over their child"},"activity":{"title":"...","instructions":"numbered steps","supplies":[{"name":"...","qty":1,"per":"total|person|group"}]}}',
     ].join('\n'));
     const questions = (d.discussionQuestions ?? []).map((q, n) => `${n + 1}. ${q}`).join('\n');
     services.push(newService({
@@ -233,6 +265,8 @@ export const draftSeries = async (
       bigIdea: week.bigIdea,
       scripture: week.scripture,
       keyVerse: d.keyVerse,
+      objectives: (d.objectives ?? []).join('\n'),
+      family: d.family,
       sections: [
         newSection({ title: 'Opening', parts: [newPart({ title: 'Welcome & Hook', type: 'script', minutes: 10, script: d.hook })] }),
         newSection({ title: 'Worship', parts: [newPart({ title: 'Worship Set', type: 'worship', minutes: 15 })] }),
@@ -246,8 +280,10 @@ export const draftSeries = async (
         newSection({
           title: 'Small Groups',
           parts: [
+            newPart({ title: 'Icebreaker', type: 'discussion', minutes: 5, script: d.icebreaker }),
             newPart({ title: d.activity?.title || 'Activity', type: 'group-activity', minutes: 15, instructions: d.activity?.instructions, supplies: d.activity?.supplies }),
             newPart({ title: 'Discussion', type: 'discussion', minutes: 15, script: questions }),
+            newPart({ title: 'Prayer Focus', type: 'prayer', minutes: 5, script: d.prayerFocus }),
             newPart({ title: 'Weekly Challenge', type: 'script', minutes: 5, script: d.challenge }),
           ],
         }),
