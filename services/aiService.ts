@@ -41,7 +41,8 @@ const chat = async (settings: AISettings, messages: ChatMessage[], json: boolean
   const data = await response.json();
   const text: string | undefined = data?.choices?.[0]?.message?.content;
   if (!text) throw new Error('No response from the AI server.');
-  return text.trim();
+  // Reasoning models (e.g. Qwen 3, DeepSeek-R1) may include their thinking; keep only the answer.
+  return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 };
 
 // Local models sometimes wrap JSON in prose or code fences; pull out the outermost object.

@@ -29,6 +29,11 @@ Parable works with no AI at all. When you turn it on, AI adds small buttons. It 
 - Draft a whole series: outline, theme, memory verse, and every week
 - Ask questions about the service you're building
 
+## Run the AI from a flash drive
+
+Want the AI without installing anything? See [portable-ai/README.md](portable-ai/README.md): one command puts
+Ollama and Qwen 3 on a USB drive, and a double-click starts it on any Mac.
+
 ## Use it
 
 1. Open the GitHub Pages site (`https://<your-user>.github.io/Parable-App/`).
