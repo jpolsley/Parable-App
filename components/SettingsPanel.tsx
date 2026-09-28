@@ -43,6 +43,14 @@ export const SettingsPanel: React.FC = () => {
           It works with any OpenAI-compatible server: Ollama, LM Studio, llama.cpp, vLLM, or LocalAI.
         </p>
         <Toggle checked={draft.enabled} onChange={(enabled) => setDraft({ ...draft, enabled })} label="Show AI helpers" />
+        <button
+          type="button"
+          onClick={() => { setDraft({ ...draft, enabled: true, baseUrl: 'http://localhost:11434/v1', model: 'qwen3:8b', apiKey: '' }); setStatus(null); }}
+          className="w-full text-left rounded-xl border border-line hover:border-accent hover:bg-accent-soft/50 p-3 transition-colors"
+        >
+          <span className="font-semibold text-sm block">Use my flash drive AI</span>
+          <span className="text-xs text-gray-500">Fills in Ollama on this computer with Qwen 3 (8B). Start the drive first, then click Test connection.</span>
+        </button>
 
         <fieldset disabled={!draft.enabled} className="space-y-4 disabled:opacity-50">
           <div>
@@ -52,7 +60,7 @@ export const SettingsPanel: React.FC = () => {
           </div>
           <div>
             <Label htmlFor="ai-model">Model</Label>
-            <input id="ai-model" className={inputClass} required value={draft.model} onChange={update('model')} placeholder="llama3.1" />
+            <input id="ai-model" className={inputClass} required value={draft.model} onChange={update('model')} placeholder="qwen3:8b" />
           </div>
           <div>
             <Label htmlFor="ai-key">API key (optional)</Label>

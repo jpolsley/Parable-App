@@ -11,7 +11,7 @@ const STORAGE_KEY = 'parable.aiSettings';
 export const DEFAULT_SETTINGS: AISettings = {
   enabled: false,
   baseUrl: import.meta.env.VITE_AI_BASE_URL || 'http://localhost:11434/v1',
-  model: import.meta.env.VITE_AI_MODEL || 'llama3.1',
+  model: import.meta.env.VITE_AI_MODEL || 'qwen3:8b',
   apiKey: import.meta.env.VITE_AI_API_KEY || '',
 };
 
