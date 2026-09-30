@@ -437,41 +437,41 @@ const SmallGroupPage: React.FC<{ service: Service; series?: Series }> = ({ servi
         right={<span className="pr-tag">{service.title}</span>}
       />
       {(service.bigIdea || service.keyVerse) && (
-        <div className="pr-sg-recap">
+        <div className="pr-sg-idea">
           {service.bigIdea && <div><p className="pr-label">Today's big idea</p><p className="pr-serif">{service.bigIdea}</p></div>}
-          {service.keyVerse && <div><p className="pr-label">Key verse</p><p className="pr-serif">{service.keyVerse}</p></div>}
+          {service.keyVerse && <div className="verse"><p className="pr-label">Key verse</p><p className="pr-serif">{service.keyVerse}</p></div>}
         </div>
       )}
-      <div className="pr-sg-grid">
-        <div>
-          {g.icebreaker && (
-            <div className="pr-sg-block">
-              <p className="pr-sg-kicker warm">Icebreaker</p>
-              <p className="pr-serif pr-sg-big">{g.icebreaker}</p>
-            </div>
-          )}
+      {g.icebreaker && (
+        <div className="pr-sg-open">
+          <p className="pr-sg-kicker warm">Open with</p>
+          <p className="pr-serif">{g.icebreaker}</p>
+        </div>
+      )}
+      {g.questions.length > 0 && (
+        <div className="pr-sg-questions">
+          <p className="pr-sg-kicker">Discussion</p>
+          <ol>
+            {g.questions.map((q, i) => <li key={i}><span>{i + 1}</span><p className="pr-serif">{q}</p></li>)}
+          </ol>
+        </div>
+      )}
+      {(g.prayer || g.challenge) && (
+        <div className={`pr-sg-close ${g.prayer && g.challenge ? 'two' : ''}`}>
           {g.prayer && (
-            <div className="pr-sg-block">
-              <p className="pr-sg-kicker">Prayer focus</p>
-              <p className="pr-serif pr-sg-big muted">{g.prayer}</p>
+            <div>
+              <p className="pr-sg-kicker">Pray together</p>
+              <p className="pr-serif pr-sg-pray">{g.prayer}</p>
             </div>
           )}
           {g.challenge && (
-            <div className="pr-sg-block">
-              <p className="pr-sg-kicker">This week's challenge</p>
+            <div>
+              <p className="pr-sg-kicker">This week</p>
               {paragraphs(g.challenge).map((para, i) => <p key={i} className="pr-sg-small">{para}</p>)}
             </div>
           )}
         </div>
-        {g.questions.length > 0 && (
-          <div className="pr-sg-questions">
-            <p className="pr-label">Discussion questions</p>
-            <ol>
-              {g.questions.map((q, i) => <li key={i}><span>{i + 1}</span><p>{q}</p></li>)}
-            </ol>
-          </div>
-        )}
-      </div>
+      )}
       {g.activities.map((a) => <PartBlock key={a.id} service={service} part={a} />)}
     </section>
   );
@@ -524,11 +524,10 @@ const SectionBlock: React.FC<{ service: Service; section: Section; schedule: Rec
         time={schedule[part.id]}
         lead={i === 0 && (
           <header className="pr-sec-head">
-            {index !== undefined && <span className="pr-sec-n">{pad2(index + 1)}</span>}
+            <p className="pr-eyebrow">
+              {[index !== undefined ? `Part ${index + 1}` : '', schedule[section.id], `${sectionMinutes(section)} min`].filter(Boolean).join(' · ')}
+            </p>
             <h2>{section.title}</h2>
-            <span className="pr-sec-time">
-              {schedule[section.id] && <>{schedule[section.id]} · </>}{sectionMinutes(section)} min
-            </span>
           </header>
         )}
       />
@@ -544,7 +543,7 @@ const Rich: React.FC<{ text: string }> = ({ text }) => {
   return (
     <>
       {m && <b className="pr-lead">{m[1]}. </b>}
-      {cueSegments(body).map((seg, j, all) => (seg.cue ? <span key={j} className={j === 0 && all.length > 1 && seg.text.length <= 40 ? 'pr-cue' : 'pr-direction'}>{seg.text}</span> : <React.Fragment key={j}>{seg.text}</React.Fragment>))}
+      {cueSegments(body).map((seg, j, all) => (seg.cue ? <span key={j} className={j === 0 && all.length > 1 && seg.text.length <= 60 ? 'pr-cue' : 'pr-direction'}>{seg.text}</span> : <React.Fragment key={j}>{seg.text}</React.Fragment>))}
     </>
   );
 };
@@ -572,7 +571,7 @@ const Blocks: React.FC<{ text: string; serif?: boolean }> = ({ text, serif }) =>
 
 // Scripture set like a reading: verse numbers become superscripts.
 const Reading: React.FC<{ text: string }> = ({ text }) => (
-  <div className={`pr-reading pr-serif ${text.length > 1400 ? 'cols' : ''}`}>
+  <div className={`pr-reading pr-serif ${text.length > 1100 ? 'cols' : ''}`}>
     {paragraphs(text).map((para, i) => {
       const cue = para.match(/^\[([^\]]+)\]$/);
       if (cue) return <p key={i} className="pr-reading-cue">{cue[1]}</p>;
@@ -672,20 +671,22 @@ const PartBlock: React.FC<{ service: Service; part: Part; time?: string; lead?: 
     part.inclusionTips.trim() && <M key="adapt" label="Adapt" tone="inclusion"><Blocks text={part.inclusionTips} /></M>,
     part.leaderNotes.trim() && <M key="note" label="Note" tone="note"><Blocks text={part.leaderNotes} /></M>,
   ].filter(Boolean);
-  // Keep the heading (and a section heading above it) on the same page as the first thing under it.
+  // Keep the heading (and a section heading above it) with what's under it: all of a short part, or the first row of a long one.
+  const short = !isReading && part.script.length + part.instructions.length + part.leaderNotes.length + part.inclusionTips.length < 1100;
+  const cut = short ? rows.length : 1;
   return (
     <>
       <div className={`pr-keep ${lead ? 'has-lead' : ''}`}>
         {lead}
-        <article data-part={part.id} className={`pr-p ${part.optional ? 'deeper' : ''} ${point ? 'point' : ''} ${lead ? 'first' : ''} ${rows.length > 1 ? 'split' : ''}`}>
+        <article data-part={part.id} className={`pr-p ${part.optional ? 'deeper' : ''} ${point ? 'point' : ''} ${lead ? 'first' : ''} ${rows.length > cut ? 'split' : ''}`}>
           {head}
-          {rows[0]}
+          {rows.slice(0, cut)}
         </article>
       </div>
-      {rows.length > 1 && (
-        <article data-part={part.id} className={`pr-p pr-p-rest ${part.optional ? 'deeper' : ''} ${part.pageBreak ? 'pr-break-after' : ''}`}>{rows.slice(1)}</article>
+      {rows.length > cut && (
+        <article data-part={part.id} className={`pr-p pr-p-rest ${part.optional ? 'deeper' : ''} ${part.pageBreak ? 'pr-break-after' : ''}`}>{rows.slice(cut)}</article>
       )}
-      {rows.length <= 1 && part.pageBreak && <div className="pr-break-after" />}
+      {rows.length <= cut && part.pageBreak && <div className="pr-break-after" />}
     </>
   );
 };
