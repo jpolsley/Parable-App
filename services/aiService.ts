@@ -1,4 +1,5 @@
-import { FamilyCues, Part, Section, Series, Service, Supply } from '../types';
+import { FamilyCues, Part, Section, Series, SeriesDesign, Service, Supply } from '../types';
+import { LOOKS, normalizeDesign } from '../lib/design';
 import { newPart, newSection, newSeries, newService, newSupply } from '../lib/factory';
 import { PART_TYPE_KEYS, PART_TYPES } from '../lib/partTypes';
 import { AISettings, serverKind, serverOrigin } from './aiSettings';
@@ -412,4 +413,23 @@ export const draftSeries = async (
     }));
   }
   return { series, weeks: services };
+};
+
+// ---------- Design from a description ----------
+
+// The model only picks from the built-in choices (and a color), so whatever it returns prints well.
+export const designFromDescription = async (settings: AISettings, description: string, series?: Series): Promise<{ design: SeriesDesign; why: string }> => {
+  const result = await chatJson<Record<string, unknown>>(settings, [
+    `A ministry leader describes the look they want for a printed curriculum book: "${description}".`,
+    series && `The series is "${series.title}" for ${series.audience}.${series.description ? ` ${series.description}` : ''}`,
+    'Choose settings from these options only:',
+    `- fonts: ${LOOKS.map((l) => `"${l.design.fonts}" (${l.blurb})`).join('; ')}`,
+    '- corners: "round", "soft", or "square"',
+    '- headings: "normal" or "caps" (all capitals)',
+    '- accent: one main color as a hex code like "#2F6B4F" that fits the description. Prefer rich, medium-dark colors; avoid pale ones.',
+    'Respond as {"fonts":"...","corners":"...","headings":"...","accent":"#RRGGBB","why":"one short sentence explaining the choice"}.',
+  ].filter(Boolean).join('\n'));
+  const design = normalizeDesign(result);
+  if (!design) throw new Error('The AI did not return a design. Try describing it differently.');
+  return { design, why: typeof result.why === 'string' ? result.why : '' };
 };

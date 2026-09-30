@@ -6,6 +6,10 @@ import '@fontsource-variable/plus-jakarta-sans';
 import '@fontsource-variable/oswald';
 import '@fontsource-variable/source-serif-4';
 import '@fontsource-variable/source-serif-4/opsz-italic.css';
+import '@fontsource-variable/fraunces';
+import '@fontsource-variable/nunito';
+import '@fontsource-variable/space-grotesk';
+import '@fontsource/dm-serif-display';
 import './index.css';
 
 const rootElement = document.getElementById('root');

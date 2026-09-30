@@ -1,5 +1,6 @@
 import React from 'react';
-import { Part, PrintScope, Section, Series, SeriesColor, Service } from '../../types';
+import { Part, PrintScope, Section, Series, Service } from '../../types';
+import { designOf, designVars } from '../../lib/design';
 import { PART_TYPES } from '../../lib/partTypes';
 import { aggregateSupplies, supplyTotal } from '../../lib/supplies';
 import { buildSchedule, formatClock, formatDate, formatDuration, sectionMinutes, serviceMinutes, visibleParts } from '../../lib/time';
@@ -13,21 +14,8 @@ import { FamilyCues } from '../../types';
 import { partReady } from '../../lib/readiness';
 import './print.css';
 
-const PALETTE: Record<SeriesColor, [string, string, string, string]> = {
-  // base, deep, soft, line
-  indigo: ['#4F46E5', '#1E1B4B', '#EEF2FF', '#C7D2FE'],
-  sky: ['#0284C7', '#082F49', '#E0F2FE', '#BAE6FD'],
-  emerald: ['#059669', '#022C22', '#D1FAE5', '#A7F3D0'],
-  amber: ['#D97706', '#451A03', '#FEF3C7', '#FDE68A'],
-  rose: ['#E11D48', '#4C0519', '#FFE4E6', '#FECDD3'],
-  violet: ['#7C3AED', '#2E1065', '#EDE9FE', '#DDD6FE'],
-  slate: ['#475569', '#0F172A', '#F1F5F9', '#CBD5E1'],
-};
-
-const vars = (color: SeriesColor = 'indigo') => {
-  const [c, deep, soft, line] = PALETTE[color];
-  return { '--c': c, '--c-deep': deep, '--c-soft': soft, '--c-line': line } as React.CSSProperties;
-};
+// Colors, fonts, corners and heading case for a series (or the default look).
+const theme = (series?: Series) => ({ style: designVars(series), 'data-caps': designOf(series).headings === 'caps' ? '' : undefined });
 
 const cssString = (s: string) => `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, ' ')}"`;
 
@@ -63,7 +51,7 @@ export const PrintRoot: React.FC = () => {
     const weeks = weeksOf(db, series.id);
     const footer: Record<string, string> = { 'series-small': 'Small group guides', 'series-family': 'Family pages', 'series-takehome': 'Take-home cards' };
     return (
-      <div className="pr-root pr" style={vars(series.color)}>
+      <div className="pr-root pr" {...theme(series)}>
         <PageStyle footer={`${series.title} · ${footer[scope.kind] ?? 'Leader guide'}`} />
         {(scope.kind === 'series-book' || scope.kind === 'series') && (
           <>
@@ -85,7 +73,7 @@ export const PrintRoot: React.FC = () => {
   const series = service.seriesId ? db.series.find((s) => s.id === service.seriesId) : undefined;
   const footer = [series?.title, series && service.week ? `Week ${service.week}` : '', service.title].filter(Boolean).join(' · ');
   return (
-    <div className="pr-root pr" style={vars(series?.color)}>
+    <div className="pr-root pr" {...theme(series)}>
       <PageStyle footer={footer} />
       <ServiceScope scope={scope} service={service} series={series} />
     </div>
@@ -130,17 +118,7 @@ const SHEET_PX = 816; // 8.5in at 96 dpi
 
 // The same pages the printer gets, drawn as paper sheets and scaled to fit the pane.
 export const PrintPreview: React.FC<{ service: Service; series?: Series; kind: PreviewKind; onPartClick?: (partId: string) => void }> = ({ service, series, kind, onPartClick }) => {
-  const outer = React.useRef<HTMLDivElement>(null);
-  const [zoom, setZoom] = React.useState(0.6);
-  React.useEffect(() => {
-    const el = outer.current;
-    if (!el) return;
-    const fit = () => setZoom(Math.min(1, (el.clientWidth - 32) / SHEET_PX));
-    fit();
-    const ro = new ResizeObserver(fit);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  const { outer, zoom } = useFitZoom();
   const empty =
     (kind === 'small' && !smallGroupGuide(service).has) ? 'No small group section yet. Add a section and set it to "Small group" to get this page.'
     : service.sections.every((s) => s.hidden || visibleParts(s).length === 0) ? 'Add a section and a few parts, and the printed pages will appear here.'
@@ -152,10 +130,42 @@ export const PrintPreview: React.FC<{ service: Service; series?: Series; kind: P
   return (
     <div ref={outer} className="pv-outer">
       {empty ? <p className="pv-empty">{empty}</p> : (
-        <div className="pr pr-preview" style={{ ...vars(series?.color), zoom }} onClick={onClick}>
+        <div className="pr pr-preview" {...theme(series)} style={{ ...designVars(series), zoom }} onClick={onClick}>
           <ServiceScope scope={{ kind }} service={service} series={series} />
         </div>
       )}
+    </div>
+  );
+};
+
+// Sheets scaled to fit their container; shared by the week preview and the design picker.
+const useFitZoom = (max = 1) => {
+  const outer = React.useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = React.useState(0.5);
+  React.useEffect(() => {
+    const el = outer.current;
+    if (!el) return;
+    const fit = () => setZoom(Math.min(max, (el.clientWidth - 32) / SHEET_PX));
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return { outer, zoom };
+};
+
+// What a series looks like with a given design: the cover, then week 1's lesson and small group page.
+export const DesignPreview: React.FC<{ series: Series; weeks: Service[] }> = ({ series, weeks }) => {
+  // Smaller sheets so a whole page shows at once while picking a look.
+  const { outer, zoom } = useFitZoom(0.62);
+  const first = weeks[0];
+  return (
+    <div ref={outer} className="pv-outer">
+      <div className="pr pr-preview" {...theme(series)} style={{ ...designVars(series), zoom }}>
+        <SeriesCover series={series} weeks={weeks} />
+        {first && <Lesson service={first} series={series} />}
+        {first && <SmallGroupPage service={first} series={series} />}
+      </div>
     </div>
   );
 };

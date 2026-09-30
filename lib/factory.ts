@@ -1,5 +1,6 @@
 import { FamilyCues, LinkItem, Part, PartType, Section, SectionRole, Series, SeriesColor, Service, Supply, SupplyPer } from '../types';
 import { PART_TYPE_KEYS } from './partTypes';
+import { normalizeDesign } from './design';
 
 export const uid = (): string =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -122,6 +123,7 @@ export const newSeries = (s: Partial<Record<keyof Series, unknown>> = {}): Serie
     bigIdea: str(s.bigIdea),
     memoryVerse: str(s.memoryVerse),
     leaderGuide: str(s.leaderGuide),
+    design: normalizeDesign(s.design),
     createdAt: num(s.createdAt, now),
     updatedAt: num(s.updatedAt, now),
   };
