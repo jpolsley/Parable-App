@@ -122,6 +122,44 @@ const ServiceScope: React.FC<{ scope: PrintScope; service: Service; series?: Ser
   }
 };
 
+// ---------- Live preview (on screen, next to the editor) ----------
+
+export type PreviewKind = 'lesson' | 'small' | 'family' | 'takehome' | 'run-sheet' | 'supplies';
+
+const SHEET_PX = 816; // 8.5in at 96 dpi
+
+// The same pages the printer gets, drawn as paper sheets and scaled to fit the pane.
+export const PrintPreview: React.FC<{ service: Service; series?: Series; kind: PreviewKind; onPartClick?: (partId: string) => void }> = ({ service, series, kind, onPartClick }) => {
+  const outer = React.useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = React.useState(0.6);
+  React.useEffect(() => {
+    const el = outer.current;
+    if (!el) return;
+    const fit = () => setZoom(Math.min(1, (el.clientWidth - 32) / SHEET_PX));
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const empty =
+    (kind === 'small' && !smallGroupGuide(service).has) ? 'No small group section yet. Add a section and set it to "Small group" to get this page.'
+    : service.sections.every((s) => s.hidden || visibleParts(s).length === 0) ? 'Add a section and a few parts, and the printed pages will appear here.'
+    : '';
+  const onClick = (e: React.MouseEvent) => {
+    const id = (e.target as HTMLElement).closest<HTMLElement>('[data-part]')?.dataset.part;
+    if (id && onPartClick) onPartClick(id);
+  };
+  return (
+    <div ref={outer} className="pv-outer">
+      {empty ? <p className="pv-empty">{empty}</p> : (
+        <div className="pr pr-preview" style={{ ...vars(series?.color), zoom }} onClick={onClick}>
+          <ServiceScope scope={{ kind }} service={service} series={series} />
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ---------- Series ----------
 
 const SeriesCover: React.FC<{ series: Series; weeks: Service[] }> = ({ series, weeks }) => (
@@ -639,13 +677,13 @@ const PartBlock: React.FC<{ service: Service; part: Part; time?: string; lead?: 
     <>
       <div className={`pr-keep ${lead ? 'has-lead' : ''}`}>
         {lead}
-        <article className={`pr-p ${part.optional ? 'deeper' : ''} ${point ? 'point' : ''} ${lead ? 'first' : ''} ${rows.length > 1 ? 'split' : ''}`}>
+        <article data-part={part.id} className={`pr-p ${part.optional ? 'deeper' : ''} ${point ? 'point' : ''} ${lead ? 'first' : ''} ${rows.length > 1 ? 'split' : ''}`}>
           {head}
           {rows[0]}
         </article>
       </div>
       {rows.length > 1 && (
-        <article className={`pr-p pr-p-rest ${part.optional ? 'deeper' : ''} ${part.pageBreak ? 'pr-break-after' : ''}`}>{rows.slice(1)}</article>
+        <article data-part={part.id} className={`pr-p pr-p-rest ${part.optional ? 'deeper' : ''} ${part.pageBreak ? 'pr-break-after' : ''}`}>{rows.slice(1)}</article>
       )}
       {rows.length <= 1 && part.pageBreak && <div className="pr-break-after" />}
     </>

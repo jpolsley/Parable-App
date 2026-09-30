@@ -333,3 +333,15 @@
 .pr-legend b { color: var(--ink); }
 .pr-row-body h4 { break-after: avoid; }
 .pr-row-body h4 + * { break-before: avoid; }
+
+/* ---------- Live preview (screen only) ---------- */
+.pv-outer { background: #E9EDF3; border-radius: 12px; padding: 16px; min-height: 100%; }
+.pv-empty { color: #64748B; font-size: 14px; text-align: center; padding: 48px 16px; }
+.pr-preview { width: 8.5in; margin: 0 auto; }
+.pr-preview > * { background: white; width: 8.5in; min-height: 11in; box-sizing: border-box; padding: 0.6in 0.65in 0.7in; margin: 0 0 20px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12), 0 10px 30px rgba(15, 23, 42, 0.08); overflow: hidden; }
+.pr-preview > *:last-child { margin-bottom: 0; }
+/* Where the printer starts a new page inside the lesson, draw a page seam. */
+.pr-preview .pr-flow > .pr-sec + .pr-sec { margin: 0.7in -0.65in 0; padding: 0.6in 0.65in 0; border-top: 20px solid #E9EDF3; }
+.pr-preview [data-part] { cursor: pointer; border-radius: 6px; transition: background 0.15s; }
+.pr-preview [data-part]:hover { background: rgba(99, 102, 241, 0.06); }
+@media print { .pv-outer { display: none; } }

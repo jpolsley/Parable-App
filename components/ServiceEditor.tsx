@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { ArrowLeft, BookOpen, Clock, Copy, Download, FileText, LayoutList, Package, Plus, Printer, Scissors, Sunrise, Trash2, Users } from 'lucide-react';
+import { ArrowLeft, BookOpen, Clock, Copy, Download, Eye, EyeOff, FileText, LayoutList, Package, PanelRight, Plus, Printer, Scissors, Sunrise, Trash2, Users } from 'lucide-react';
 import { Part, Section, Service } from '../types';
 import { cloneSection, clonePart, cloneService, newSection } from '../lib/factory';
 import { COLOR_CLASSES } from '../lib/series';
@@ -12,7 +12,24 @@ import { useStore } from '../store/StoreContext';
 import { restrictToVerticalAxis } from './dndModifiers';
 import { SectionActions, SectionCard } from './SectionCard';
 import { SidePanel } from './SidePanel';
+import { PreviewKind, PrintPreview } from './print/PrintView';
 import { Button, EmptyState, Menu, MenuDivider, MenuItem } from './ui';
+
+const PREVIEW_KEY = 'parable.preview';
+const PREVIEW_KINDS: { id: PreviewKind; label: string }[] = [
+  { id: 'lesson', label: 'Lesson' },
+  { id: 'small', label: 'Small group' },
+  { id: 'family', label: 'Family' },
+  { id: 'takehome', label: 'Take-home' },
+  { id: 'run-sheet', label: 'Run sheet' },
+];
+const readPref = <T,>(fallback: T): T => {
+  try {
+    return { ...fallback, ...JSON.parse(localStorage.getItem(PREVIEW_KEY) || '{}') };
+  } catch {
+    return fallback;
+  }
+};
 
 export const ServiceEditor: React.FC<{ serviceId: string; focusPartId?: string }> = ({ serviceId, focusPartId }) => {
   const { db, updateService, addServices, addWeeks, deleteService, toast, print } = useStore();
@@ -26,6 +43,23 @@ export const ServiceEditor: React.FC<{ serviceId: string; focusPartId?: string }
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
   const schedule = useMemo(() => (service ? buildSchedule(service) : {}), [service]);
+  // Live preview of the printed pages beside the editor; the choice is remembered per browser.
+  const [pref, setPref] = useState(() => readPref<{ on: boolean; kind: PreviewKind; panel: 'preview' | 'details' }>({ on: true, kind: 'lesson', panel: 'preview' }));
+  const savePref = (next: Partial<typeof pref>) => {
+    const merged = { ...pref, ...next };
+    setPref(merged);
+    try { localStorage.setItem(PREVIEW_KEY, JSON.stringify(merged)); } catch { /* preference only */ }
+  };
+  const previewService = useDeferredValue(service);
+  const previewRef = React.useRef<HTMLDivElement>(null);
+  // Editing a part scrolls the preview to where that part prints.
+  const followInPreview = (e: React.FocusEvent) => {
+    const id = (e.target as HTMLElement).closest<HTMLElement>('[id^="part-"]')?.id.slice(5);
+    const box = previewRef.current;
+    const el = id && box?.querySelector<HTMLElement>(`[data-part="${id}"]`);
+    if (!box || !el) return;
+    box.scrollTo({ top: box.scrollTop + el.getBoundingClientRect().top - box.getBoundingClientRect().top - 24, behavior: 'smooth' });
+  };
 
   // Arriving from a dashboard link: expand that part's section and scroll to it.
   useEffect(() => {
@@ -106,6 +140,12 @@ export const ServiceEditor: React.FC<{ serviceId: string; focusPartId?: string }
     navigate(`/s/${copy.id}`);
     toast('Service duplicated');
   };
+  const openPart = (partId: string) => {
+    // A collapsed section mounts its parts on the next render, so open it via both routes.
+    setOpenPartIds((ids) => new Set([...ids, partId]));
+    jumpToPart(partId);
+    setTimeout(() => window.dispatchEvent(new CustomEvent('parable:open-part', { detail: partId })), 50);
+  };
   const jumpToPart = (partId: string) => {
     const section = service.sections.find((s) => s.parts.some((p: Part) => p.id === partId));
     if (section?.collapsed) actions.updateSection(section.id, (s) => ({ ...s, collapsed: false }));
@@ -113,7 +153,7 @@ export const ServiceEditor: React.FC<{ serviceId: string; focusPartId?: string }
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-6 pb-24">
+    <div className={`${pref.on ? 'max-w-[1680px]' : 'max-w-7xl'} mx-auto px-4 md:px-6 pb-24`}>
       <div className="flex items-center gap-2 text-sm text-gray-500 py-3">
         <button type="button" onClick={() => navigate('/series')} className="inline-flex items-center gap-1 hover:text-ink">
           <ArrowLeft className="w-4 h-4" /> Series
@@ -145,6 +185,9 @@ export const ServiceEditor: React.FC<{ serviceId: string; focusPartId?: string }
           {service.bigIdea && <p className="mt-2 text-gray-700 italic">{service.bigIdea}</p>}
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <Button type="button" variant="outline" icon={pref.on ? EyeOff : Eye} onClick={() => savePref({ on: !pref.on })} className="hidden lg:inline-flex">
+            {pref.on ? 'Hide preview' : 'Preview'}
+          </Button>
           <Menu trigger={<Button type="button" icon={Printer}>Print</Button>}>
             <MenuItem icon={BookOpen} onClick={() => print(service.id, { kind: 'week' })}>Full week (lesson, small group, family)</MenuItem>
             <MenuItem icon={FileText} onClick={() => print(service.id, { kind: 'lesson' })}>Large group lesson</MenuItem>
@@ -167,8 +210,8 @@ export const ServiceEditor: React.FC<{ serviceId: string; focusPartId?: string }
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start">
-        <div className="space-y-4">
+      <div className={`grid grid-cols-1 gap-6 items-start ${pref.on ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]' : 'lg:grid-cols-[minmax(0,1fr)_380px]'}`}>
+        <div className="space-y-4" onFocus={pref.on ? followInPreview : undefined}>
           {service.sections.length === 0 && (
             <div className="border-2 border-dashed border-gray-300 rounded-xl">
               <EmptyState icon={LayoutList} title="This service is empty">Add a section like "Worship" or "Small Groups", then add parts to it.</EmptyState>
@@ -183,7 +226,35 @@ export const ServiceEditor: React.FC<{ serviceId: string; focusPartId?: string }
           </DndContext>
           <Button type="button" variant="outline" icon={Plus} onClick={addSection} className="w-full border-dashed">Add section</Button>
         </div>
-        <div>
+        {pref.on ? (
+          <div className="hidden lg:flex flex-col gap-3 lg:sticky lg:top-[76px] lg:h-[calc(100vh-92px)]">
+            <div className="flex items-center gap-2 shrink-0">
+              <div role="tablist" aria-label="Right panel" className="inline-flex bg-white border border-line rounded-lg p-0.5">
+                <button type="button" role="tab" aria-selected={pref.panel === 'preview'} onClick={() => savePref({ panel: 'preview' })} className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md ${pref.panel === 'preview' ? 'bg-accent text-white font-semibold' : 'text-gray-600 hover:text-ink'}`}>
+                  <Eye className="w-4 h-4" /> Preview
+                </button>
+                <button type="button" role="tab" aria-selected={pref.panel === 'details'} onClick={() => savePref({ panel: 'details' })} className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md ${pref.panel === 'details' ? 'bg-accent text-white font-semibold' : 'text-gray-600 hover:text-ink'}`}>
+                  <PanelRight className="w-4 h-4" /> Details
+                </button>
+              </div>
+              {pref.panel === 'preview' && (
+                <select aria-label="Which pages to preview" value={pref.kind} onChange={(e) => savePref({ kind: e.target.value as PreviewKind })} className="ml-auto text-sm bg-white border border-line rounded-lg px-2 py-1.5">
+                  {PREVIEW_KINDS.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}
+                </select>
+              )}
+            </div>
+            {pref.panel === 'preview' ? (
+              <div ref={previewRef} className="flex-1 min-h-0 overflow-y-auto rounded-xl">
+                <PrintPreview service={previewService ?? service} series={series} kind={pref.kind} onPartClick={openPart} />
+              </div>
+            ) : (
+              <div className="flex-1 min-h-0">
+                <SidePanel service={service} update={update} onJumpToPart={jumpToPart} />
+              </div>
+            )}
+          </div>
+        ) : null}
+        <div className={pref.on ? 'lg:hidden' : ''}>
           <SidePanel service={service} update={update} onJumpToPart={jumpToPart} />
         </div>
       </div>
