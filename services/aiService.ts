@@ -198,6 +198,15 @@ const FIELD_ASK: Record<TextField, string> = {
   leaderNotes: 'Write brief prep notes for the leader: what to review beforehand, what to watch for, and how this part connects to the big idea.',
 };
 
+// How text should be shaped so it prints well (the lesson layout reads these conventions).
+const FORMAT_RULES = [
+  'Formatting rules:',
+  '- Separate paragraphs with a blank line.',
+  '- Inside a script, directions for the leader go in square brackets, e.g. [Hold up the phone.] or [Pause for answers.]',
+  '- For a list, put each item on its own line starting with "• ".',
+  '- A labeled step keeps its label and colon, e.g. "The setup: Pair students up."',
+].join('\n');
+
 export const draftPartText = (settings: AISettings, service: Service, section: Section, part: Part, field: TextField, instruction: string) =>
   chatText(settings, [
     describeService(service, part.id),
@@ -207,6 +216,7 @@ export const draftPartText = (settings: AISettings, service: Service, section: S
     part[field] ? `The current text is:\n${part[field]}\n\nRevise or improve it.` : '',
     FIELD_ASK[field],
     instruction && `Additional direction from the leader: ${instruction}`,
+    field === 'script' || field === 'instructions' ? FORMAT_RULES : '',
     'Return only the text itself, with no preamble or headings.',
   ].filter(Boolean).join('\n'));
 
@@ -226,6 +236,17 @@ export const suggestSupplies = async (settings: AISettings, service: Service, pa
 
 const PART_SHAPE = `{"title":"...","type":"one of: ${PART_TYPE_KEYS.join(', ')}","minutes":5,"script":"word-for-word leader script","instructions":"numbered steps","supplies":[{"name":"...","qty":1,"per":"total|person|group"}]}`;
 
+// Naming conventions the printed lesson recognizes (numbered points, readings, challenges).
+const PART_RULES = [
+  'Part conventions:',
+  '- A teaching point is its own part titled "Point 1: <headline>" (type "script").',
+  '- A scripture reading is titled "Read: <reference>" (type "bible-verse"). Do not quote long passages from memory; put "Read <reference> aloud." in instructions instead.',
+  '- Discussion questions: type "discussion", script is numbered lines "1. …".',
+  '- A take-home action is titled "Weekly Challenge: <name>".',
+  '- script is only what the leader says out loud; instructions are directions for the leader.',
+  FORMAT_RULES,
+].join('\n');
+
 export const suggestParts = async (settings: AISettings, service: Service, section: Section, instruction: string): Promise<Part[]> => {
   const result = await chatJson<{ parts?: unknown[] }>(settings, [
     describeService(service),
@@ -233,6 +254,7 @@ export const suggestParts = async (settings: AISettings, service: Service, secti
     `Suggest 1–3 new parts for the "${section.title}" section that fit the big idea and complement what is already there.`,
     instruction && `Direction from the leader: ${instruction}`,
     `Respond as {"parts":[${PART_SHAPE}]}. Write full scripts and instructions, not outlines.`,
+    PART_RULES,
   ].filter(Boolean).join('\n'));
   return (result.parts ?? []).map((p) => newPart((p ?? {}) as Partial<Part>));
 };
@@ -249,7 +271,8 @@ export const draftService = async (
     params.series && `It is one week of the series "${params.series.title}".${params.series.bigIdea ? ` Series theme: ${params.series.bigIdea}` : ''}`,
     skeleton,
     `Respond as {"title":"...","bigIdea":"one sentence","scripture":"reference","keyVerse":"verse text (reference)","sections":[{"title":"...","parts":[${PART_SHAPE}]}]}.`,
-    'Write full scripts and instructions a volunteer can use directly.',
+    'Write full scripts and instructions a volunteer can use directly. The section for small group leaders should have "Small Group" in its title.',
+    PART_RULES,
   ].filter(Boolean).join('\n'));
   const service = newService({ ...result, sections: Array.isArray(result.sections) ? result.sections : [] });
   return { title: service.title, bigIdea: service.bigIdea, keyVerse: service.keyVerse, scripture: service.scripture, sections: service.sections };
@@ -294,16 +317,18 @@ interface WeekOutline {
 }
 
 interface WeekDetail {
-  keyVerse?: string;
-  hook?: string;
-  teaching?: string;
-  discussionQuestions?: string[];
-  challenge?: string;
-  icebreaker?: string;
-  prayerFocus?: string;
   objectives?: string[];
+  welcome?: string;
+  illustration?: { title?: string; script?: string; supplies?: unknown[] };
+  transition?: string;
+  background?: string;
+  teachingPoints?: { point?: string; script?: string }[];
+  teaching?: string;
+  challenge?: { title?: string; script?: string } | string;
+  icebreaker?: string;
+  discussionQuestions?: string[];
+  prayerFocus?: string;
   family?: Partial<FamilyCues>;
-  activity?: { title?: string; instructions?: string; supplies?: unknown[] };
 }
 
 export const draftSeries = async (
@@ -336,10 +361,15 @@ export const draftSeries = async (
     onProgress(`Writing week ${i + 1} of ${weeks.length}: ${week.title ?? ''}`);
     const d = await chatJson<WeekDetail>(settings, [
       `Series: "${seriesTitle}" for ${params.audience}. Week ${i + 1}: "${week.title}". Scripture: ${week.scripture}. Big idea: ${week.bigIdea}.`,
-      'Write the full lesson content.',
-      'Respond as {"keyVerse":"verse text (reference)","hook":"100-150 word opening story or illustration, as a script","teaching":"3 teaching points, each a headline followed by a 100-150 word script paragraph","discussionQuestions":["5 questions moving from observation to interpretation to application"],"challenge":"a specific practice for the week","objectives":["3-4 learning objectives, each starting with a verb"],"icebreaker":"one fun small group opening question tied to the theme","prayerFocus":"one sentence on what the small group should pray for","family":{"morning":"a verse or truth a parent can say to start the day","onTheGo":"something to talk about or do in the car","meal":"a question to ask at dinner","bedtime":"a short prayer to pray over their child"},"activity":{"title":"...","instructions":"numbered steps","supplies":[{"name":"...","qty":1,"per":"total|person|group"}]}}',
+      'Write the full lesson a volunteer leader can read and use directly.',
+      'Respond as {"objectives":["3 short objectives, each starting with a verb"],"welcome":"2-3 sentence welcome that introduces today\'s topic","illustration":{"title":"short name","script":"120-180 word opening story, object lesson, or game setup the leader says, with [directions] in brackets","supplies":[{"name":"...","qty":1,"per":"total|person|group"}]},"transition":"1-2 sentences that bridge from the illustration to the scripture","background":"2-4 sentences of historical or literary context for the passage","teachingPoints":[{"point":"short headline","script":"100-150 words the leader says"}] (exactly 3),"challenge":{"title":"short name","script":"a specific practice for this week, 2-4 sentences"},"icebreaker":"one fun small group opening question tied to the theme","discussionQuestions":["5 questions moving from observation to interpretation to application"],"prayerFocus":"one sentence on what the small group should pray for","family":{"morning":"a truth a parent can say to start the day","onTheGo":"something to talk about or do in the car","meal":"a question to ask at dinner","bedtime":"a short prayer to pray together"}}',
+      FORMAT_RULES,
     ].join('\n'));
     const questions = (d.discussionQuestions ?? []).map((q, n) => `${n + 1}. ${q}`).join('\n');
+    const challenge = typeof d.challenge === 'string' ? { title: '', script: d.challenge } : d.challenge ?? {};
+    const points = d.teachingPoints?.length
+      ? d.teachingPoints.map((t, n) => newPart({ title: `Point ${n + 1}: ${t.point ?? ''}`, type: 'script', minutes: 6, script: t.script }))
+      : [newPart({ title: week.title || 'Teaching', type: 'script', minutes: 18, script: d.teaching })];
     services.push(newService({
       title: week.title || `Week ${i + 1}`,
       seriesId: series.id,
@@ -347,27 +377,35 @@ export const draftSeries = async (
       audience: params.audience,
       bigIdea: week.bigIdea,
       scripture: week.scripture,
-      keyVerse: d.keyVerse,
       objectives: (d.objectives ?? []).join('\n'),
       family: d.family,
       sections: [
-        newSection({ title: 'Opening', parts: [newPart({ title: 'Welcome & Hook', type: 'script', minutes: 10, script: d.hook })] }),
-        newSection({ title: 'Worship', parts: [newPart({ title: 'Worship Set', type: 'worship', minutes: 15 })] }),
         newSection({
-          title: 'Teaching',
+          title: 'Opening',
           parts: [
-            newPart({ title: week.title || 'Teaching', type: 'bible-story', minutes: 20, script: d.teaching }),
-            newPart({ title: 'Key Verse', type: 'bible-verse', minutes: 3, script: d.keyVerse }),
+            newPart({ title: 'Welcome', type: 'script', minutes: 3, script: d.welcome }),
+            newPart({ title: `Illustration: ${d.illustration?.title || 'Opening Story'}`, type: 'script', minutes: 8, script: d.illustration?.script, supplies: d.illustration?.supplies }),
+            newPart({ title: 'Transition', type: 'script', minutes: 2, script: d.transition }),
           ],
+        }),
+        newSection({
+          title: 'Scripture',
+          parts: [
+            newPart({ title: `Read: ${week.scripture || 'Scripture'}`, type: 'bible-verse', minutes: 4, instructions: `Read ${week.scripture || "this week's passage"} aloud from your Bible.` }),
+            newPart({ title: 'Background', type: 'script', minutes: 3, script: d.background }),
+          ],
+        }),
+        newSection({ title: 'Teaching', parts: points }),
+        newSection({
+          title: 'Application',
+          parts: [newPart({ title: `Weekly Challenge: ${challenge.title || 'This Week'}`, type: 'script', minutes: 4, script: challenge.script })],
         }),
         newSection({
           title: 'Small Groups',
           parts: [
             newPart({ title: 'Icebreaker', type: 'discussion', minutes: 5, script: d.icebreaker }),
-            newPart({ title: d.activity?.title || 'Activity', type: 'group-activity', minutes: 15, instructions: d.activity?.instructions, supplies: d.activity?.supplies }),
             newPart({ title: 'Discussion', type: 'discussion', minutes: 15, script: questions }),
             newPart({ title: 'Prayer Focus', type: 'prayer', minutes: 5, script: d.prayerFocus }),
-            newPart({ title: 'Weekly Challenge', type: 'script', minutes: 5, script: d.challenge }),
           ],
         }),
       ],
