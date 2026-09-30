@@ -15,3 +15,6 @@ export const paragraphs = (text: string) => text.split(/\n\s*\n/).map((p) => p.t
 // "[Hold up the jar] Have you…" → segments, so stage directions can be styled as cues.
 export const cueSegments = (text: string): { cue: boolean; text: string }[] =>
   text.split(/(\[[^\]]+\])/).filter(Boolean).map((t) => (t.startsWith('[') && t.endsWith(']') ? { cue: true, text: t.slice(1, -1) } : { cue: false, text: t }));
+
+// For summaries (small group page, family page, cards): drop "[stage directions]" and keep the words.
+export const stripCues = (text: string) => text.replace(/\s*\[[^\]]+\]\s*/g, ' ').replace(/[ \t]{2,}/g, ' ').replace(/ ?\n ?/g, '\n').trim();

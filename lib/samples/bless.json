@@ -17,6 +17,12 @@
   ],
   "services": [
     {
+      "family": {
+        "morning": "Start the day by praying for one person on your FRANCS list by name.",
+        "onTheGo": "Set a daily phone reminder together to pray for the names you circled.",
+        "meal": "Ask: Who did you write on your FRANCS list, and why them?",
+        "bedtime": "Pray together for one friend, relative, or neighbor who doesn't yet know Jesus."
+      },
       "id": "bless-week-1",
       "seriesId": "bless-series",
       "week": 1,
@@ -26,7 +32,6 @@
       "classSize": 20,
       "groupCount": 3,
       "keyVerse": "",
-      "family": {},
       "checkedSupplies": [],
       "createdAt": 1790726400000,
       "updatedAt": 1790726400000,
@@ -142,13 +147,13 @@
               "supplies": [
                 {
                   "id": "bless-x-14",
-                  "name": "Pen",
+                  "name": "Pens",
                   "qty": 1,
                   "per": "person"
                 },
                 {
                   "id": "bless-x-15",
-                  "name": "Sheet of paper",
+                  "name": "Sheets of paper",
                   "qty": 1,
                   "per": "person"
                 }
@@ -167,6 +172,12 @@
       ]
     },
     {
+      "family": {
+        "morning": "Ask God for spiritual ears to hear the Holy Spirit today.",
+        "onTheGo": "Play the listening game: who can notice what someone really needed today?",
+        "meal": "Ask: Who is the best listener you know? What do they do?",
+        "bedtime": "Pray for someone you listened to today and what you heard them need."
+      },
       "id": "bless-week-2",
       "seriesId": "bless-series",
       "week": 2,
@@ -176,7 +187,6 @@
       "classSize": 20,
       "groupCount": 3,
       "keyVerse": "",
-      "family": {},
       "checkedSupplies": [],
       "createdAt": 1790726400000,
       "updatedAt": 1790726400000,
@@ -205,19 +215,19 @@
               "supplies": [
                 {
                   "id": "bless-x-20",
-                  "name": "Blank sheet of paper",
+                  "name": "Blank sheets of paper",
                   "qty": 1,
                   "per": "person"
                 },
                 {
                   "id": "bless-x-21",
-                  "name": "Pen",
+                  "name": "Pens",
                   "qty": 1,
                   "per": "person"
                 },
                 {
                   "id": "bless-x-22",
-                  "name": "Printed shape card",
+                  "name": "Printed shape cards",
                   "qty": 1,
                   "per": "person"
                 }
@@ -328,6 +338,12 @@
       ]
     },
     {
+      "family": {
+        "morning": "Think of one person you could sit with at lunch today.",
+        "onTheGo": "Plan a snack or meal to share with someone new this week.",
+        "meal": "Ask: If you could host a table for four with Jesus, who would you invite?",
+        "bedtime": "Thank God that Jesus eats with messy people, and pray for someone who feels left out."
+      },
       "id": "bless-week-3",
       "seriesId": "bless-series",
       "week": 3,
@@ -337,7 +353,6 @@
       "classSize": 20,
       "groupCount": 3,
       "keyVerse": "",
-      "family": {},
       "checkedSupplies": [],
       "createdAt": 1790726400000,
       "updatedAt": 1790726400000,
@@ -455,6 +470,12 @@
       ]
     },
     {
+      "family": {
+        "morning": "Ask God to help you notice someone others overlook today.",
+        "onTheGo": "Talk about how to be with someone this week, not just do something for them.",
+        "meal": "Ask: Has someone ever helped you but made you feel small? How is a real friend different?",
+        "bedtime": "Pray for the person you wrote on your note, by name."
+      },
       "id": "bless-week-4",
       "seriesId": "bless-series",
       "week": 4,
@@ -464,7 +485,6 @@
       "classSize": 20,
       "groupCount": 3,
       "keyVerse": "",
-      "family": {},
       "checkedSupplies": [],
       "createdAt": 1790726400000,
       "updatedAt": 1790726400000,
@@ -493,13 +513,13 @@
               "supplies": [
                 {
                   "id": "bless-x-55",
-                  "name": "Box of standard playing cards",
+                  "name": "Boxes of standard playing cards",
                   "qty": 1,
                   "per": "group"
                 },
                 {
                   "id": "bless-x-56",
-                  "name": "Paper slip (2.5\" × 0.75\") with \"winner\" written in pencil",
+                  "name": "Paper slips (2.5\" × 0.75\") with \"winner\" in pencil",
                   "qty": 1,
                   "per": "group"
                 },
@@ -610,6 +630,12 @@
       ]
     },
     {
+      "family": {
+        "morning": "Remember: your story points to God's story.",
+        "onTheGo": "Practice the five-finger Story Tool together: Affirm, Connect, Exalt, Reveal, Suggest.",
+        "meal": "Ask: If someone asked you \"Who is Jesus?\", what would you say?",
+        "bedtime": "Pray for courage to share your story with one friend this week."
+      },
       "id": "bless-week-5",
       "seriesId": "bless-series",
       "week": 5,
@@ -619,7 +645,6 @@
       "classSize": 20,
       "groupCount": 3,
       "keyVerse": "",
-      "family": {},
       "checkedSupplies": [],
       "createdAt": 1790726400000,
       "updatedAt": 1790726400000,

@@ -4,7 +4,7 @@ import { PART_TYPES } from '../../lib/partTypes';
 import { aggregateSupplies, supplyTotal } from '../../lib/supplies';
 import { buildSchedule, formatClock, formatDate, formatDuration, sectionMinutes, serviceMinutes, visibleParts } from '../../lib/time';
 import { weeksOf } from '../../lib/series';
-import { cueSegments, listItems, looksLikeList, paragraphs } from '../../lib/text';
+import { cueSegments, listItems, looksLikeList, paragraphs, stripCues } from '../../lib/text';
 import { qrPath } from '../../lib/qr';
 import { useStore } from '../../store/StoreContext';
 import { Accessibility, Car, Layers, Compass, HelpCircle, ListChecks, MessageSquareQuote, Monitor, Moon, Package, Pointer, Quote, Sparkles, StickyNote, Sunrise, Target, Timer, Users, Utensils } from 'lucide-react';
@@ -192,6 +192,7 @@ const LeaderGuide: React.FC<{ series: Series; weeks: Service[] }> = ({ series, w
         <div key={name}><span className="pr-ico"><Icon /></span><p><b>{name}</b> {text}</p></div>
       ))}
     </div>
+    <div className="pr-avoid">
     <p className="pr-label" style={{ marginTop: '20pt' }}>The series at a glance</p>
     <ol className="pr-weeks">
       {weeks.map((w) => (
@@ -205,6 +206,7 @@ const LeaderGuide: React.FC<{ series: Series; weeks: Service[] }> = ({ series, w
         </li>
       ))}
     </ol>
+    </div>
   </section>
 );
 
@@ -256,7 +258,13 @@ const Lesson: React.FC<{ service: Service; series?: Series }> = ({ service, seri
       <SessionPlan service={service} series={series} />
       <SessionOverview service={service} series={series} schedule={schedule} />
       <div className="pr-page pr-flow">
-        {main.map((section) => <SectionBlock key={section.id} service={service} section={section} schedule={schedule} />)}
+        {service.bigIdea && (
+          <div className="pr-bottomline">
+            <p className="pr-label">Bottom line</p>
+            <p className="pr-serif">{service.bigIdea}</p>
+          </div>
+        )}
+        {main.map((section, i) => <SectionBlock key={section.id} service={service} section={section} schedule={schedule} index={i} />)}
       </div>
     </>
   );
@@ -468,36 +476,76 @@ const FamilyPage: React.FC<{ service: Service; series?: Series }> = ({ service, 
 
 const fmtQty = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
-const SectionBlock: React.FC<{ service: Service; section: Section; schedule: Record<string, string> }> = ({ service, section, schedule }) => (
+const SectionBlock: React.FC<{ service: Service; section: Section; schedule: Record<string, string>; index?: number }> = ({ service, section, schedule, index }) => (
   <section className={`pr-sec ${section.pageBreak ? 'pr-break-after' : ''}`}>
-    <header className="pr-sec-head">
-      <span className="rule" />
-      <h2>{section.title}</h2>
-      <span className="rule" />
-      <span className="pr-sec-time"><Timer /> {sectionMinutes(section)} minutes</span>
-    </header>
-    {schedule[section.id] && <p className="pr-sec-sub">Starts {schedule[section.id]}</p>}
-    {visibleParts(section).map((part) => <PartBlock key={part.id} service={service} part={part} time={schedule[part.id]} />)}
+    {visibleParts(section).map((part, i) => (
+      <PartBlock
+        key={part.id}
+        service={service}
+        part={part}
+        time={schedule[part.id]}
+        lead={i === 0 && (
+          <header className="pr-sec-head">
+            {index !== undefined && <span className="pr-sec-n">{pad2(index + 1)}</span>}
+            <h2>{section.title}</h2>
+            <span className="pr-sec-time">
+              {schedule[section.id] && <>{schedule[section.id]} · </>}{sectionMinutes(section)} min
+            </span>
+          </header>
+        )}
+      />
+    ))}
   </section>
 );
 
-const Script: React.FC<{ text: string }> = ({ text }) => (
-  <div className="pr-script">
-    <p className="pr-script-tag">« Script »</p>
-    {paragraphs(text).map((para, i) => (
-      <p key={i} className="pr-serif">
-        {cueSegments(para).map((seg, j) => (seg.cue ? <span key={j} className="pr-cue">{seg.text}</span> : <React.Fragment key={j}>{seg.text}</React.Fragment>))}
-      </p>
-    ))}
+// "The setup: Pair students…" → a bold lead-in, the way printed curricula set them.
+const LEAD = /^([A-Z][^:.?!"“]{1,38}):\s+/;
+const Rich: React.FC<{ text: string }> = ({ text }) => {
+  const m = text.match(LEAD);
+  const body = m ? text.slice(m[0].length) : text;
+  return (
+    <>
+      {m && <b className="pr-lead">{m[1]}. </b>}
+      {cueSegments(body).map((seg, j, all) => (seg.cue ? <span key={j} className={j === 0 && all.length > 1 && seg.text.length <= 40 ? 'pr-cue' : 'pr-direction'}>{seg.text}</span> : <React.Fragment key={j}>{seg.text}</React.Fragment>))}
+    </>
+  );
+};
+
+const BULLET = /^\s*(?:[-*•]|\d+[.)])\s+/;
+// Paragraphs, with runs of "• …" lines grouped into lists.
+const Blocks: React.FC<{ text: string; serif?: boolean }> = ({ text, serif }) => {
+  const chunks = paragraphs(text).flatMap((p) => (p.split('\n').every((l) => BULLET.test(l)) || looksLikeList(p) ? p.split('\n') : [p]));
+  const out: React.ReactNode[] = [];
+  let list: string[] = [];
+  const flush = () => {
+    if (list.length) out.push(<ul key={out.length} className="pr-list">{list.map((l, i) => <li key={i}><Rich text={l} /></li>)}</ul>);
+    list = [];
+  };
+  chunks.forEach((c) => {
+    if (BULLET.test(c)) list.push(c.replace(BULLET, '').trim());
+    else {
+      flush();
+      out.push(<p key={out.length} className={serif ? 'pr-serif' : ''}><Rich text={c} /></p>);
+    }
+  });
+  flush();
+  return <div className={serif ? 'pr-say' : 'pr-do'}>{out}</div>;
+};
+
+// Scripture set like a reading: verse numbers become superscripts.
+const Reading: React.FC<{ text: string }> = ({ text }) => (
+  <div className={`pr-reading pr-serif ${text.length > 1400 ? 'cols' : ''}`}>
+    {paragraphs(text).map((para, i) => {
+      const cue = para.match(/^\[([^\]]+)\]$/);
+      if (cue) return <p key={i} className="pr-reading-cue">{cue[1]}</p>;
+      return (
+        <p key={i}>
+          {para.split(/(?:^|(?<=[\s.,;:!?"'”’—]))(\d{1,3})(?=\s+[A-Z“"‘'(])/).map((seg, j) => (j % 2 ? <sup key={j}>{seg}</sup> : seg))}
+        </p>
+      );
+    })}
   </div>
 );
-
-const Steps: React.FC<{ text: string }> = ({ text }) =>
-  looksLikeList(text) ? (
-    <ol className="pr-steps">{listItems(text).map((item, i) => <li key={i}>{item}</li>)}</ol>
-  ) : (
-    <div className="pr-prose">{paragraphs(text).map((p, i) => <p key={i} style={{ whiteSpace: 'pre-line' }}>{p}</p>)}</div>
-  );
 
 const QR: React.FC<{ url: string }> = ({ url }) => {
   const qr = qrPath(url);
@@ -510,54 +558,97 @@ const QR: React.FC<{ url: string }> = ({ url }) => {
   );
 };
 
-const PartBlock: React.FC<{ service: Service; part: Part; time?: string }> = ({ service, part, time }) => {
-  const { label, icon: Icon } = PART_TYPES[part.type];
+// A row with its label set in the left margin: SAY, DO, ASK, READ…
+const M: React.FC<{ label: string; tone?: string; children: React.ReactNode }> = ({ label, tone, children }) => (
+  <div className={`pr-m ${tone ?? ''}`}>
+    <p className="pr-m-label">{label}</p>
+    <div className="pr-m-body">{children}</div>
+  </div>
+);
+
+const POINT = /^point\s+(\d+)\s*[:.–—-]\s*(.+)$/i;
+
+const PartBlock: React.FC<{ service: Service; part: Part; time?: string; lead?: React.ReactNode }> = ({ service, part, time, lead }) => {
+  const { label } = PART_TYPES[part.type];
   const links = [...part.media, ...part.resources].filter((l) => /^https?:\/\//.test(l.url));
   const supplies = part.supplies.filter((s) => s.name.trim());
-  const isQuestions = (part.type === 'discussion' && listItems(part.script).length > 1) || (part.type === 'discussion' && part.script.trim().endsWith('?'));
-  const isVerse = part.type === 'bible-verse' && part.script.trim() && part.script.length < 400;
-  return (
-    <article className={`pr-p ${part.optional ? 'deeper' : ''} ${part.pageBreak ? 'pr-break-after' : ''}`}>
-      {part.optional && <p className="pr-deeper-tag">Going deeper · optional</p>}
-      <div className="pr-p-head">
-        <h3>{part.title}</h3>
-        <span className="pr-type"><Icon /> {label}</span>
-        <span className="t"><Timer /> {time ? `${time} · ` : ''}{part.minutes} min</span>
+  const isQuestions = part.type === 'discussion' && (listItems(part.script).length > 1 || part.script.trim().endsWith('?'));
+  const isShortVerse = part.type === 'bible-verse' && part.script.trim() && part.script.length < 400;
+  const isReading = !isShortVerse && (part.type === 'bible-verse' || /^read\b/i.test(part.title));
+  const point = part.title.match(POINT);
+  const readingRef = isReading ? part.title.replace(/^read(ing)?\s*[:–—-]?\s*/i, '') : '';
+  const kind = part.optional ? 'Going deeper · optional'
+    : point ? `Point ${point[1]}${time ? ` · ${time}` : ''} · ${part.minutes} min`
+    : isReading ? 'Scripture reading'
+    : part.type === 'script' || part.type === 'other' ? '' : label;
+  const head = (
+    <div className="pr-p-head">
+      <div className="pr-p-when">
+        {point ? <span className="pr-p-num">{pad2(Number(point[1]))}</span> : (
+          <>
+            {time && <b>{time}</b>}
+            <span>{part.minutes} min</span>
+          </>
+        )}
       </div>
-      {supplies.length > 0 && (
-        <Row icon={Package} label="What you need">
-          <div className="pr-supplies">{supplies.map((s) => <span key={s.id}><b>{fmtQty(supplyTotal(s, service))}</b> {s.name}</span>)}</div>
-        </Row>
+      <div>
+        {kind && <p className="pr-p-kind">{kind}</p>}
+        <h3>{point ? point[2] : isReading && readingRef ? readingRef : part.title}</h3>
+      </div>
+    </div>
+  );
+  const rows = [
+    supplies.length > 0 && (
+      <M key="need" label="Need">
+        <ul className="pr-need">{supplies.map((s) => <li key={s.id}><b>{fmtQty(supplyTotal(s, service))}</b> {s.name}</li>)}</ul>
+      </M>
+    ),
+    part.instructions.trim() && <M key="do" label="Do"><Blocks text={part.instructions} /></M>,
+    part.script.trim() && (
+      isQuestions ? (
+        <M key="say" label="Ask">
+          <ol className="pr-questions">
+            {listItems(part.script).map((q, i) => <li key={i}><span className="n">{i + 1}</span><p className="pr-serif"><Rich text={q} /></p></li>)}
+          </ol>
+        </M>
+      ) : isShortVerse ? (
+        <M key="say" label="Read"><div className="pr-bigverse pr-serif"><p>{part.script}</p></div></M>
+      ) : isReading ? (
+        <M key="say" label="Read"><Reading text={part.script} /></M>
+      ) : (
+        <M key="say" label="Say"><Blocks text={part.script} serif /></M>
+      )
+    ),
+    links.length > 0 && (
+      <M key="screen" label="Screen">
+        <div className="pr-links">
+          {links.map((l) => (
+            <div key={l.id} className="pr-link">
+              <QR url={l.url} />
+              <div><b>{l.label || 'Scan to open'}</b><span>{l.url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 60)}</span></div>
+            </div>
+          ))}
+        </div>
+      </M>
+    ),
+    part.inclusionTips.trim() && <M key="adapt" label="Adapt" tone="inclusion"><Blocks text={part.inclusionTips} /></M>,
+    part.leaderNotes.trim() && <M key="note" label="Note" tone="note"><Blocks text={part.leaderNotes} /></M>,
+  ].filter(Boolean);
+  // Keep the heading (and a section heading above it) on the same page as the first thing under it.
+  return (
+    <>
+      <div className={`pr-keep ${lead ? 'has-lead' : ''}`}>
+        {lead}
+        <article className={`pr-p ${part.optional ? 'deeper' : ''} ${point ? 'point' : ''} ${lead ? 'first' : ''} ${rows.length > 1 ? 'split' : ''}`}>
+          {head}
+          {rows[0]}
+        </article>
+      </div>
+      {rows.length > 1 && (
+        <article className={`pr-p pr-p-rest ${part.optional ? 'deeper' : ''} ${part.pageBreak ? 'pr-break-after' : ''}`}>{rows.slice(1)}</article>
       )}
-      {part.instructions.trim() && <Row icon={Pointer} label="Instructions"><Steps text={part.instructions} /></Row>}
-      {part.script.trim() && (
-        isQuestions ? (
-          <Row icon={HelpCircle} label="Questions">
-            <ol className="pr-questions">
-              {listItems(part.script).map((q, i) => <li key={i}><span className="n">{i + 1}</span><p className="pr-serif">{q}</p></li>)}
-            </ol>
-          </Row>
-        ) : isVerse ? (
-          <Row icon={Quote} label="Read together"><div className="pr-bigverse pr-serif"><p>{part.script}</p></div></Row>
-        ) : (
-          <Row icon={MessageSquareQuote} label="Say"><Script text={part.script} /></Row>
-        )
-      )}
-      {links.length > 0 && (
-        <Row icon={Monitor} label="Show on screen">
-          <div className="pr-links">
-            {links.map((l) => (
-              <div key={l.id} className="pr-link">
-                <QR url={l.url} />
-                <div><b>{l.label || 'Scan to open'}</b><span>{l.url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 60)}</span></div>
-              </div>
-            ))}
-          </div>
-        </Row>
-      )}
-      {part.inclusionTips.trim() && <Row icon={Accessibility} label="Every kid can join" tone="inclusion"><Steps text={part.inclusionTips} /></Row>}
-      {part.leaderNotes.trim() && <Row icon={StickyNote} label="Leader note" tone="note"><Steps text={part.leaderNotes} /></Row>}
-    </article>
+      {rows.length <= 1 && part.pageBreak && <div className="pr-break-after" />}
+    </>
   );
 };
 
@@ -567,7 +658,7 @@ const TakeHome: React.FC<{ service: Service; series?: Series }> = ({ service, se
   const parts = service.sections.filter((s) => !s.hidden).flatMap(visibleParts);
   const questions = parts.filter((p) => p.type === 'discussion' && p.script.trim()).flatMap((p) => listItems(p.script)).slice(0, 3);
   const prayer = parts.find((p) => p.type === 'prayer' && p.script.trim())?.script.trim();
-  const challenge = parts.find((p) => /challenge/i.test(p.title) && p.script.trim())?.script.trim();
+  const challenge = stripCues(parts.find((p) => /challenge/i.test(p.title) && p.script.trim())?.script ?? '');
   const verse = service.keyVerse || series?.memoryVerse;
   const card = (
     <div className="pr-card">

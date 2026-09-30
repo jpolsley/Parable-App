@@ -4,10 +4,40 @@ import { clonePart, newPart, newSeries, newService } from '../lib/factory';
 import { migrateLegacySeries, reschedule, weeksOf } from '../lib/series';
 import { AISettings, loadSettings, saveSettings } from '../services/aiSettings';
 import { testConnection } from '../services/aiService';
+import { SAMPLES } from '../lib/samples';
 
 const STORAGE_KEY = 'parable.db.v1';
 
-const loadDb = (): Database => {
+const SEEDED_KEY = 'parable.seeded';
+
+// Adds any built-in series this browser hasn't been given yet.
+const withSamples = (db: Database): Database => {
+  let seeded: string[] = [];
+  try {
+    seeded = JSON.parse(localStorage.getItem(SEEDED_KEY) || '[]');
+  } catch {
+    seeded = [];
+  }
+  const fresh = SAMPLES.filter((s) => !seeded.includes(s.key));
+  if (!fresh.length) return db;
+  let next = db;
+  for (const { data } of fresh) {
+    const series = (data.series ?? []).map(newSeries).filter((s) => !next.series.some((x) => x.id === s.id));
+    const services = (data.services ?? []).map((s) => newService(s as unknown as Record<string, unknown>)).filter((s) => !next.services.some((x) => x.id === s.id));
+    next = { ...next, series: [...next.series, ...series], services: [...next.services, ...services] };
+  }
+  try {
+    localStorage.setItem(SEEDED_KEY, JSON.stringify([...seeded, ...fresh.map((s) => s.key)]));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // storage full or blocked: the samples still show for this visit
+  }
+  return next;
+};
+
+const loadDb = (): Database => withSamples(readDb());
+
+const readDb = (): Database => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
