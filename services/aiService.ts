@@ -1,7 +1,7 @@
 import { FamilyCues, Part, Section, Series, Service, Supply } from '../types';
 import { newPart, newSection, newSeries, newService, newSupply } from '../lib/factory';
 import { PART_TYPE_KEYS, PART_TYPES } from '../lib/partTypes';
-import { AISettings } from './aiSettings';
+import { AISettings, serverKind, serverOrigin } from './aiSettings';
 
 interface ChatMessage {
   role: 'system' | 'user';
@@ -18,66 +18,148 @@ const headers = (settings: AISettings) => {
   return h;
 };
 
-const post = async (settings: AISettings, body: object): Promise<Response> => {
+const unreachable = (settings: AISettings) => {
+  const kind = serverKind(settings);
+  return new Error(
+    kind === 'steward' ? `Could not reach Steward at ${settings.baseUrl}. Is the Steward app running on this laptop?`
+    : kind === 'ollama' ? `Could not reach Ollama at ${settings.baseUrl}. Make sure it is running, and that it allows this site (OLLAMA_ORIGINS), or connect through Steward instead.`
+    : `Could not reach your AI server at ${settings.baseUrl}. Make sure it is running and allows requests from this site (CORS).`,
+  );
+};
+
+const send = async (settings: AISettings, url: string, body: object): Promise<Response> => {
   try {
-    return await fetch(endpoint(settings, '/chat/completions'), { method: 'POST', headers: headers(settings), body: JSON.stringify(body) });
+    return await fetch(url, { method: 'POST', headers: headers(settings), body: JSON.stringify(body) });
   } catch {
-    throw new Error(`Could not reach your AI server at ${settings.baseUrl}. Make sure it is running and allows requests from this site (CORS).`);
+    throw unreachable(settings);
   }
+};
+
+const failed = async (response: Response) => {
+  const detail = await response.text().catch(() => '');
+  if (response.status === 401 || response.status === 403) return new Error('The AI server refused the request. Check the key in AI settings.');
+  return new Error(`AI server returned ${response.status}${detail ? `: ${detail.slice(0, 200)}` : ''}`);
+};
+
+// Qwen 3 thinks out loud unless told not to; the /no_think switch goes at the end of the last user message.
+const noThink = (settings: AISettings, messages: ChatMessage[]): ChatMessage[] => {
+  if (!/qwen3/i.test(settings.model)) return messages;
+  const last = messages.length - 1;
+  return messages.map((m, i) => (i === last && m.role === 'user' ? { ...m, content: `${m.content} /no_think` } : m));
 };
 
 const chat = async (settings: AISettings, messages: ChatMessage[], json: boolean): Promise<string> => {
-  const body = { model: settings.model, messages, temperature: 0.7, stream: false };
+  const kind = serverKind(settings);
+  // Structured output is steadier from a small model with no sampling randomness.
+  const temperature = json ? 0 : 0.7;
+  let text: string | undefined;
 
-  // Ask for JSON mode first; some servers reject response_format, so retry without it.
-  let response = await post(settings, json ? { ...body, response_format: { type: 'json_object' } } : body);
-  if (json && (response.status === 400 || response.status === 422)) {
-    response = await post(settings, body);
+  if (kind === 'ollama') {
+    // Ollama's own endpoint can switch thinking off properly, keep the model loaded, and widen the context.
+    const url = `${serverOrigin(settings)}/api/chat`;
+    const body = {
+      model: settings.model,
+      messages,
+      stream: false,
+      think: false,
+      keep_alive: '24h',
+      options: { num_ctx: 12288, temperature },
+      ...(json ? { format: 'json' } : {}),
+    };
+    let response = await send(settings, url, body);
+    // Older Ollama versions don't know "think"; fall back to the prompt switch.
+    if (response.status === 400) response = await send(settings, url, { ...body, think: undefined, messages: noThink(settings, messages) });
+    if (!response.ok) throw await failed(response);
+    text = (await response.json())?.message?.content;
+  } else {
+    const url = endpoint(settings, '/chat/completions');
+    const body = {
+      model: settings.model,
+      messages: kind === 'steward' ? messages : noThink(settings, messages),
+      temperature,
+      stream: false,
+      ...(kind === 'steward' ? { use_docs: settings.useDocs } : {}),
+    };
+    // Ask for JSON mode first; some servers reject response_format, so retry without it.
+    let response = await send(settings, url, json ? { ...body, response_format: { type: 'json_object' } } : body);
+    if (json && (response.status === 400 || response.status === 422)) response = await send(settings, url, body);
+    if (!response.ok) throw await failed(response);
+    text = (await response.json())?.choices?.[0]?.message?.content;
   }
-  if (!response.ok) {
-    const detail = await response.text().catch(() => '');
-    throw new Error(`AI server returned ${response.status}${detail ? `: ${detail.slice(0, 200)}` : ''}`);
-  }
-  const data = await response.json();
-  const text: string | undefined = data?.choices?.[0]?.message?.content;
+
   if (!text) throw new Error('No response from the AI server.');
   // Reasoning models (e.g. Qwen 3, DeepSeek-R1) may include their thinking; keep only the answer.
-  return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+  return text.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/^[\s\S]*?<\/think>/i, '').trim();
 };
 
-// Local models sometimes wrap JSON in prose or code fences; pull out the outermost object.
-const chatJson = async <T>(settings: AISettings, prompt: string): Promise<T> => {
-  const text = await chat(settings, [
+// Small local models wrap JSON in prose or code fences and leave trailing commas; be forgiving.
+export const parseJsonLoose = <T>(text: string): T => {
+  const tryParse = (from: string, to: string) => {
+    const start = text.indexOf(from);
+    const end = text.lastIndexOf(to);
+    if (start === -1 || end <= start) return undefined;
+    const raw = text.slice(start, end + 1);
+    for (const candidate of [raw, raw.replace(/,\s*([}\]])/g, '$1')]) {
+      try {
+        return JSON.parse(candidate) as unknown;
+      } catch {
+        // try the next cleanup
+      }
+    }
+    return undefined;
+  };
+  // Whichever comes first is the outer value: a list of objects starts with "[", not its first "{".
+  const obj = text.indexOf('{');
+  const arr = text.indexOf('[');
+  const listFirst = arr !== -1 && (obj === -1 || arr < obj);
+  const found = listFirst ? tryParse('[', ']') ?? tryParse('{', '}') : tryParse('{', '}') ?? tryParse('[', ']');
+  if (found === undefined) throw new Error('The AI returned something that wasn\'t valid JSON. Try again.');
+  // A bare list where an object was expected: hand it back under a generic key.
+  return (Array.isArray(found) ? { items: found } : found) as T;
+};
+
+// Structured requests are their own focused call that asks for only the JSON.
+const chatJson = async <T>(settings: AISettings, prompt: string): Promise<T> =>
+  parseJsonLoose<T>(await chat(settings, [
     { role: 'system', content: `${SYSTEM} You always respond with a single valid JSON object and nothing else.` },
     { role: 'user', content: prompt },
-  ], true);
-  const start = text.indexOf('{');
-  const end = text.lastIndexOf('}');
-  if (start === -1 || end <= start) throw new Error('The AI response did not contain JSON.');
-  try {
-    return JSON.parse(text.slice(start, end + 1)) as T;
-  } catch {
-    throw new Error('The AI returned malformed JSON. Try again, or use a larger model.');
-  }
-};
+  ], true));
 
 const chatText = (settings: AISettings, prompt: string) =>
   chat(settings, [{ role: 'system', content: SYSTEM }, { role: 'user', content: prompt }], false);
 
 export const testConnection = async (settings: AISettings): Promise<string> => {
-  let response: Response;
-  try {
-    response = await fetch(endpoint(settings, '/models'), { headers: headers(settings) });
-  } catch {
-    throw new Error(`Could not reach ${settings.baseUrl}. Is the server running, and is CORS enabled?`);
+  const kind = serverKind(settings);
+  const get = async (url: string) => {
+    let response: Response;
+    try {
+      response = await fetch(url, { headers: headers(settings) });
+    } catch {
+      throw unreachable(settings);
+    }
+    if (response.status === 401 || response.status === 403) throw new Error('Connected, but the key was refused. Check the key.');
+    if (!response.ok) throw new Error(`Server responded with ${response.status}.`);
+    return response.json().catch(() => null);
+  };
+  const check = (models: string[], extra = '') => {
+    if (models.length && !models.some((m) => m === settings.model || m.startsWith(`${settings.model}:`))) {
+      return `Connected${extra}, but model "${settings.model}" wasn't listed. Available: ${models.slice(0, 8).join(', ')}`;
+    }
+    return `Connected${extra}.`;
+  };
+
+  if (kind === 'steward') {
+    const data = await get(`${serverOrigin(settings)}/health`);
+    const models: string[] = Array.isArray(data?.models) ? data.models.map((m: unknown) => (typeof m === 'string' ? m : (m as { name?: string })?.name ?? '')).filter(Boolean) : [];
+    const docs = typeof data?.docs === 'number' ? data.docs : typeof data?.documents === 'number' ? data.documents : undefined;
+    return check(models, ` to Steward${docs !== undefined ? ` (${docs} documents loaded)` : ''}`);
   }
-  if (!response.ok) throw new Error(`Server responded with ${response.status}.`);
-  const data = await response.json().catch(() => null);
-  const models: string[] = Array.isArray(data?.data) ? data.data.map((m: { id: string }) => m.id) : [];
-  if (models.length && !models.includes(settings.model)) {
-    return `Connected, but model "${settings.model}" wasn't listed. Available: ${models.slice(0, 8).join(', ')}`;
+  if (kind === 'ollama') {
+    const data = await get(`${serverOrigin(settings)}/api/tags`);
+    return check(Array.isArray(data?.models) ? data.models.map((m: { name: string }) => m.name) : [], ' to Ollama');
   }
-  return 'Connected.';
+  const data = await get(endpoint(settings, '/models'));
+  return check(Array.isArray(data?.data) ? data.data.map((m: { id: string }) => m.id) : []);
 };
 
 // ---------- Context ----------

@@ -1,9 +1,21 @@
+// 'steward' is the user's own FastAPI server in front of Ollama (handles CORS, thinking, keep-alive).
+export type AIServer = 'auto' | 'ollama' | 'steward' | 'openai';
+
 export interface AISettings {
   enabled: boolean;
   baseUrl: string; // OpenAI-compatible base URL, e.g. http://localhost:11434/v1
   model: string;
-  apiKey: string; // optional; most self-hosted servers ignore it
+  apiKey: string; // optional; most self-hosted servers ignore it (Steward needs its key)
+  server: AIServer;
+  useDocs: boolean; // Steward only: let it add passages from the user's documents
 }
+
+// 'auto' guesses from the port, so a Tailscale https address should pick a type explicitly.
+export const serverKind = (s: AISettings): Exclude<AIServer, 'auto'> =>
+  s.server !== 'auto' ? s.server : /:11434(\/|$)/.test(s.baseUrl) ? 'ollama' : /:8787(\/|$)/.test(s.baseUrl) ? 'steward' : 'openai';
+
+// http://localhost:8787/v1 → http://localhost:8787
+export const serverOrigin = (s: AISettings) => s.baseUrl.trim().replace(/\/+$/, '').replace(/\/v1$/, '');
 
 const STORAGE_KEY = 'parable.aiSettings';
 
@@ -13,6 +25,8 @@ export const DEFAULT_SETTINGS: AISettings = {
   baseUrl: import.meta.env.VITE_AI_BASE_URL || 'http://localhost:11434/v1',
   model: import.meta.env.VITE_AI_MODEL || 'qwen3:8b',
   apiKey: import.meta.env.VITE_AI_API_KEY || '',
+  server: 'auto',
+  useDocs: false,
 };
 
 export const loadSettings = (): AISettings => {
