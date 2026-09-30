@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
@@ -61,6 +61,12 @@ interface PartCardProps {
 export const PartCard: React.FC<PartCardProps> = ({ service, section, part, startTime, defaultOpen, onChange, onDelete, onDuplicate, onMove }) => {
   const { aiSettings, saveToLibrary, print } = useStore();
   const [open, setOpen] = useState(defaultOpen);
+  // Opened from elsewhere, e.g. clicking this part in the live preview.
+  useEffect(() => {
+    const onOpen = (e: Event) => { if ((e as CustomEvent<string>).detail === part.id) setOpen(true); };
+    window.addEventListener('parable:open-part', onOpen);
+    return () => window.removeEventListener('parable:open-part', onOpen);
+  }, [part.id]);
   const [tab, setTab] = useState<Tab>('script');
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: part.id });
 
