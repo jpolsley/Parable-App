@@ -1,5 +1,5 @@
 import { FamilyCues, Part, Section, Series, Service } from '../types';
-import { listItems } from './text';
+import { listItems, stripCues } from './text';
 import { visibleParts } from './time';
 
 export const ROLE_LABELS: Record<Section['role'], string> = {
@@ -16,7 +16,7 @@ const isIcebreaker = (p: Part) => /ice.?breaker|warm.?up|get(ting)? to know/i.te
 // A weekly challenge is something said to the group, not a game with "challenge" in its name.
 export const isChallenge = (p: Part) =>
   !['game', 'group-activity', 'craft'].includes(p.type) && /challenge|this week|take.?home|try it|apply/i.test(p.title) && !!(p.script.trim() || p.instructions.trim());
-const text = (p?: Part) => (p ? (p.script.trim() || p.instructions.trim()) : '');
+const text = (p?: Part) => (p ? stripCues(p.script.trim() || p.instructions.trim()) : '');
 
 // Everything a small group leader needs, pulled out of the small group sections.
 export const smallGroupGuide = (service: Service) => {

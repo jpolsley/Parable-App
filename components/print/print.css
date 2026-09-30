@@ -90,7 +90,8 @@
 .pr-script { padding-left: 14pt; border-left: 2pt solid var(--c-line); margin-bottom: 10pt; }
 .pr-script p { font-size: 11pt; line-height: 1.55; }
 .pr-script p + p { margin-top: 7pt; }
-.pr-cue { font-family: 'Inter Variable', sans-serif; font-size: 7.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--c); background: var(--c-soft); border-radius: 4pt; padding: 1pt 5pt; margin: 0 2pt; white-space: nowrap; }
+.pr-cue { font-family: 'Inter Variable', sans-serif; font-size: 6.5pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--c); background: var(--c-soft); border-radius: 3pt; padding: 1.5pt 5pt; margin-right: 4pt; white-space: nowrap; vertical-align: 1pt; }
+.pr-direction { font-family: 'Inter Variable', sans-serif; font-size: 0.8em; font-style: italic; color: var(--muted); }
 .pr-questions { list-style: none; margin: 0 0 10pt; padding: 0; }
 .pr-questions li { display: grid; grid-template-columns: 22pt 1fr; gap: 8pt; padding: 6pt 0; border-bottom: 0.5pt dotted var(--rule); break-inside: avoid; }
 .pr-questions li:last-child { border-bottom: 0; }
@@ -223,7 +224,7 @@
 .pr-family-card .pr-serif { font-size: 11.5pt; line-height: 1.5; color: #1E293B; }
 
 /* ---------- Condensed display type ---------- */
-.pr-cond, .pr-sec-head h2, .pr-p-head h3, .pr-divider h2 { font-family: 'Oswald Variable', 'Oswald', 'Plus Jakarta Sans Variable', sans-serif; letter-spacing: -0.005em; }
+.pr-cond, .pr-sec-head h2, .pr-divider h2 { font-family: 'Oswald Variable', 'Oswald', 'Plus Jakarta Sans Variable', sans-serif; letter-spacing: -0.005em; }
 .pr-divider h2 { font-size: 76pt; font-weight: 600; text-transform: uppercase; line-height: 0.9; }
 
 /* ---------- Icon rows ---------- */
@@ -267,29 +268,64 @@
 .pr-ov-foot { font-size: 8pt; color: var(--muted); margin-top: 10pt !important; }
 
 /* ---------- Sections and parts (lesson flow) ---------- */
-.pr-flow .pr-sec:first-child { margin-top: 0; }
-.pr-sec { margin-top: 22pt; }
-.pr-sec-head { display: flex; align-items: center; gap: 12pt; break-after: avoid; }
-.pr-sec-head .rule { flex: 1; border-top: 0.75pt solid var(--c-line); }
-.pr-sec-head h2 { font-size: 26pt; font-weight: 600; color: var(--c); line-height: 1; text-transform: uppercase; }
-.pr-sec-time { display: inline-flex; align-items: center; gap: 4pt; font-size: 8.5pt; color: var(--muted); white-space: nowrap; }
-.pr-sec-time svg { width: 10pt; height: 10pt; color: var(--c); }
-.pr-sec-sub { text-align: center; font-size: 7.5pt; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); font-weight: 700; margin: 3pt 0 12pt !important; break-after: avoid; }
-.pr-p { padding: 10pt 0 6pt; border-top: 0.5pt solid var(--rule); }
-.pr-sec-sub + .pr-p { border-top: 0; }
-.pr-p.deeper { background: var(--c-soft); border: 0; border-radius: 12pt; padding: 12pt 14pt 6pt; margin: 8pt 0 12pt; }
-.pr-deeper-tag { font-size: 7.5pt; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: var(--c); text-align: center; margin-bottom: 4pt !important; }
-.pr-p-head { display: flex; align-items: baseline; gap: 8pt; margin-bottom: 9pt; break-after: avoid; }
-.pr-p-head h3 { font-size: 16pt; font-weight: 500; flex: 1; color: var(--ink); line-height: 1.1; }
-.pr-p-head .t { display: inline-flex; align-items: center; gap: 3pt; font-size: 8.5pt; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.pr-p-head .t svg { width: 9pt; height: 9pt; color: var(--c); }
-.pr-script { border: 1pt solid var(--c-line); border-radius: 4pt; padding: 12pt 14pt 10pt; position: relative; margin-top: 8pt; }
-.pr-script-tag { position: absolute; top: -6pt; left: 50%; transform: translateX(-50%); background: white; padding: 0 8pt; font-size: 7pt; font-weight: 800; letter-spacing: 0.24em; text-transform: uppercase; color: var(--c); white-space: nowrap; }
-.pr-p.deeper .pr-script-tag { background: var(--c-soft); }
-.pr-script p { font-size: 11pt; line-height: 1.55; color: var(--c-deep); }
-.pr-script p + p { margin-top: 7pt; }
+/* Labels live in a left margin column so the reading column stays clean. */
+.pr-flow { --gut: 0.78in; }
+.pr-bottomline { background: var(--c-deep); color: white; border-radius: 10pt; padding: 14pt 18pt 15pt; margin-bottom: 22pt; break-inside: avoid; }
+.pr-bottomline .pr-label { color: var(--c-line); margin-bottom: 4pt !important; }
+.pr-bottomline .pr-serif { font-size: 17pt; line-height: 1.3; }
+.pr-sec { margin-top: 0; }
+.pr-sec-head { display: flex; align-items: baseline; gap: 10pt; border-top: 2.5pt solid var(--c); padding-top: 7pt; margin-bottom: 4pt; }
+.pr-sec-n { font-family: 'Plus Jakarta Sans Variable', sans-serif; font-weight: 800; font-size: 11pt; color: var(--c); width: calc(var(--gut, 0.78in) - 10pt); flex-shrink: 0; letter-spacing: 0.04em; }
+.pr-sec-head h2 { font-size: 21pt; font-weight: 600; color: var(--ink); line-height: 1; text-transform: uppercase; letter-spacing: 0.02em; flex: 1; }
+.pr-sec-time { font-size: 8pt; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pr-p { padding: 12pt 0 4pt; border-top: 0.5pt solid var(--rule); }
+.pr-keep { break-inside: avoid; }
+.pr-keep.has-lead { margin-top: 26pt; }
+.pr-flow > .pr-sec:first-of-type .pr-keep.has-lead, .pr-bottomline + .pr-sec .pr-keep.has-lead { margin-top: 0; }
+.pr-p.first { border-top: 0; }
+.pr-p.pr-p-rest { border-top: 0; padding-top: 0; }
+.pr-p.deeper.split { border-radius: 10pt 10pt 0 0; margin-bottom: 0; padding-bottom: 0; }
+.pr-p.deeper.pr-p-rest { border-radius: 0 0 10pt 10pt; margin-top: 0; padding-top: 0; }
+.pr-p.deeper { background: var(--c-soft); border: 0; border-radius: 10pt; padding: 12pt 12pt 4pt 0; margin: 8pt 0 10pt; }
+.pr-p-head { display: grid; grid-template-columns: var(--gut, 0.78in) 1fr; align-items: end; margin-bottom: 8pt; }
+.pr-p-when { font-size: 7.5pt; color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1.35; padding-bottom: 1pt; }
+.pr-p-when b { display: block; color: var(--ink); font-weight: 700; }
+.pr-p.deeper .pr-p-when { padding-left: 12pt; }
+.pr-p-kind { font-size: 7pt; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--c); margin-bottom: 2pt !important; }
+.pr-p-head h3 { font-family: 'Plus Jakarta Sans Variable', sans-serif; font-size: 14.5pt; font-weight: 700; color: var(--ink); line-height: 1.2; letter-spacing: -0.01em; }
+.pr-p.point .pr-p-head h3 { font-size: 17pt; }
+.pr-p-num { font-family: 'Plus Jakarta Sans Variable', sans-serif; font-weight: 800; font-size: 30pt; line-height: 0.85; color: var(--c); letter-spacing: -0.03em; display: block; }
+.pr-m { display: grid; grid-template-columns: var(--gut, 0.78in) 1fr; margin: 0 0 9pt; }
+.pr-m-label { font-size: 7pt; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--faint); padding-top: 2.5pt; }
+.pr-p.deeper .pr-m-label { padding-left: 12pt; }
+.pr-m-body { min-width: 0; }
+.pr-m.note .pr-m-label { color: #B45309; }
+.pr-m.note .pr-m-body { background: #FFFBEB; border-left: 2pt solid #F59E0B; padding: 6pt 9pt; border-radius: 0 6pt 6pt 0; }
+.pr-m.inclusion .pr-m-label { color: #047857; }
+.pr-m.inclusion .pr-m-body { background: #ECFDF5; border-left: 2pt solid #10B981; padding: 6pt 9pt; border-radius: 0 6pt 6pt 0; }
+.pr-say { border-left: 2pt solid var(--c); padding-left: 11pt; }
+.pr-say p { font-size: 11pt; line-height: 1.55; color: #0F172A; }
+.pr-do p { font-size: 9.5pt; line-height: 1.5; color: #334155; }
+.pr-say p + p, .pr-do p + p, .pr-say p + .pr-list, .pr-do p + .pr-list, .pr-list + p { margin-top: 6pt; }
+.pr-list { margin: 0; padding-left: 12pt; list-style: disc; }
+.pr-list li { margin-bottom: 3pt; break-inside: avoid; }
+.pr-list li::marker { color: var(--c); }
+.pr-say .pr-list li { font-family: 'Source Serif 4 Variable', serif; font-size: 11pt; line-height: 1.5; }
+.pr-do .pr-list li { font-size: 9.5pt; line-height: 1.45; color: #334155; }
+.pr-lead { font-family: 'Plus Jakarta Sans Variable', sans-serif; font-weight: 800; font-size: 0.88em; color: var(--c-deep); }
+.pr-need { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 3pt 14pt; font-size: 9pt; color: #334155; }
+.pr-need b { color: var(--c); font-variant-numeric: tabular-nums; margin-right: 2pt; }
+.pr-reading { background: var(--paper); border-radius: 8pt; padding: 12pt 15pt; font-size: 10.5pt; line-height: 1.6; color: #1E293B; }
+.pr-reading.cols { columns: 2; column-gap: 20pt; }
+.pr-reading p + p { margin-top: 6pt; }
+.pr-reading p { break-inside: avoid-column; orphans: 3; widows: 3; }
+.pr-reading sup { font-family: 'Plus Jakarta Sans Variable', sans-serif; font-size: 6.5pt; font-weight: 800; color: var(--c); margin-right: 1.5pt; vertical-align: 3.5pt; line-height: 0; }
+.pr-reading-cue { font-family: 'Inter Variable', sans-serif; font-size: 8pt; font-style: italic; color: var(--muted); text-align: center; }
 .pr-p .pr-questions { margin: 0; }
+.pr-p .pr-questions li { padding: 5pt 0; }
+.pr-p .pr-questions .n { font-size: 12pt; }
 .pr-p .pr-bigverse { text-align: left; padding: 0; }
+.pr-p .pr-links { margin-top: 0; }
 
 /* ---------- Symbols legend ---------- */
 .pr-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 6pt 18pt; }
