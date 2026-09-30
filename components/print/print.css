@@ -194,6 +194,7 @@
 .pr-sg-big { font-size: 15pt; line-height: 1.4; }
 .pr-sg-big.muted { color: #475569; }
 .pr-sg-small { font-size: 10pt; line-height: 1.5; color: #334155; }
+.pr-sg-small + .pr-sg-small { margin-top: 4pt; }
 .pr-sg-questions { background: var(--paper); border: 0.75pt solid var(--rule); border-radius: 14pt; padding: 16pt 18pt; align-self: start; }
 .pr-sg-questions ol { list-style: none; margin: 0; padding: 0; }
 .pr-sg-questions li { display: grid; grid-template-columns: 22pt 1fr; gap: 8pt; padding: 8pt 0; border-bottom: 0.5pt solid var(--rule); break-inside: avoid; }

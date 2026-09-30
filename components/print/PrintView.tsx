@@ -413,7 +413,7 @@ const SmallGroupPage: React.FC<{ service: Service; series?: Series }> = ({ servi
           {g.challenge && (
             <div className="pr-sg-block">
               <p className="pr-sg-kicker">This week's challenge</p>
-              <p className="pr-sg-small">{g.challenge}</p>
+              {paragraphs(g.challenge).map((para, i) => <p key={i} className="pr-sg-small">{para}</p>)}
             </div>
           )}
         </div>
