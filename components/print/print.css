@@ -280,8 +280,8 @@
 .pr-sec-time { font-size: 8pt; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .pr-p { padding: 12pt 0 4pt; border-top: 0.5pt solid var(--rule); }
 .pr-keep { break-inside: avoid; }
-.pr-keep.has-lead { margin-top: 26pt; }
-.pr-flow > .pr-sec:first-of-type .pr-keep.has-lead, .pr-bottomline + .pr-sec .pr-keep.has-lead { margin-top: 0; }
+/* Each main section (Opening, Scripture, Teaching…) starts its own page. */
+.pr-flow > .pr-sec + .pr-sec { break-before: page; }
 .pr-p.first { border-top: 0; }
 .pr-p.pr-p-rest { border-top: 0; padding-top: 0; }
 .pr-p.deeper.split { border-radius: 10pt 10pt 0 0; margin-bottom: 0; padding-bottom: 0; }
