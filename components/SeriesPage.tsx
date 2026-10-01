@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ArrowLeft, BookOpen, CalendarDays, Copy, Download, FileText, GripVertical, Layers, Palette, Plus, Printer, Scissors, Sunrise, Trash2, Users } from 'lucide-react';
+import { ArrowLeft, BookOpen, BookOpenText, CalendarDays, Copy, Download, FileText, GripVertical, Layers, Palette, Plus, Printer, Scissors, Sunrise, Trash2, Users } from 'lucide-react';
 import { Service } from '../types';
 import { cloneService, newSeries, todayISO } from '../lib/factory';
 import { downloadJson, slug } from '../lib/files';
@@ -15,6 +15,7 @@ import { shortDate } from './cards';
 import { restrictToVerticalAxis } from './dndModifiers';
 import { ColorPicker, NewServiceDialog } from './NewServiceDialog';
 import { DesignDialog } from './DesignDialog';
+import { BookPreview } from './print/PrintView';
 import { Button, EmptyState, Label, Menu, MenuDivider, MenuItem, Meter, TextArea, inputClass } from './ui';
 
 export const SeriesPage: React.FC<{ seriesId: string }> = ({ seriesId }) => {
@@ -22,6 +23,14 @@ export const SeriesPage: React.FC<{ seriesId: string }> = ({ seriesId }) => {
   const series = db.series.find((s) => s.id === seriesId);
   const [addOpen, setAddOpen] = useState(false);
   const [designOpen, setDesignOpen] = useState(false);
+  // "Weeks" lists and reorders weeks; "Book" shows the whole printed book. Remembered per browser.
+  const [view, setViewState] = useState<'weeks' | 'book'>(() => {
+    try { return localStorage.getItem('parable.seriesView') === 'book' ? 'book' : 'weeks'; } catch { return 'weeks'; }
+  });
+  const setView = (v: 'weeks' | 'book') => {
+    setViewState(v);
+    try { localStorage.setItem('parable.seriesView', v); } catch { /* preference only */ }
+  };
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -102,13 +111,38 @@ export const SeriesPage: React.FC<{ seriesId: string }> = ({ seriesId }) => {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
+      <div className={`grid grid-cols-1 gap-6 items-start ${view === 'book' ? 'lg:grid-cols-[minmax(0,1fr)_380px]' : 'lg:grid-cols-[minmax(0,1fr)_340px]'}`}>
         <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Weeks</h2>
-            {weeks.length > 1 && <span className="text-xs text-gray-400">Drag to reorder. Dates follow the schedule.</span>}
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div role="tablist" aria-label="Series view" className="inline-flex bg-white border border-line rounded-lg p-0.5">
+              {([['weeks', 'Weeks', Layers], ['book', 'Book', BookOpenText]] as const).map(([id, text, Icon]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={view === id}
+                  onClick={() => setView(id)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md ${view === id ? 'bg-accent text-white font-semibold' : 'text-gray-600 hover:text-ink'}`}
+                >
+                  <Icon className="w-4 h-4" /> {text}
+                </button>
+              ))}
+            </div>
+            {view === 'weeks' && weeks.length > 1 && <span className="text-xs text-gray-400">Drag to reorder. Dates follow the schedule.</span>}
+            {view === 'book' && <span className="text-xs text-gray-400 text-right">The whole printed book. Click a part to edit it. Exact page breaks show when you print.</span>}
           </div>
-          {weeks.length === 0 ? (
+          {view === 'book' ? (
+            <div className="rounded-xl">
+              <BookPreview
+                series={series}
+                weeks={weeks}
+                onPartClick={(partId) => {
+                  const week = weeks.find((w) => w.sections.some((sec) => sec.parts.some((p) => p.id === partId)));
+                  if (week) navigate(`/s/${week.id}/p/${partId}`);
+                }}
+              />
+            </div>
+          ) : weeks.length === 0 ? (
             <div className="border-2 border-dashed border-line rounded-2xl bg-white">
               <EmptyState icon={FileText} title="No weeks yet">
                 <div className="mt-3"><Button size="sm" icon={Plus} onClick={() => setAddOpen(true)}>Add the first week</Button></div>
@@ -131,7 +165,7 @@ export const SeriesPage: React.FC<{ seriesId: string }> = ({ seriesId }) => {
               </SortableContext>
             </DndContext>
           )}
-          {weeks.length > 0 && (
+          {view === 'weeks' && weeks.length > 0 && (
             <Button variant="outline" icon={Plus} className="w-full mt-3 border-dashed" onClick={() => setAddOpen(true)}>Add week {weeks.length + 1}</Button>
           )}
         </section>

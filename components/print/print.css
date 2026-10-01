@@ -339,6 +339,7 @@
 .pr-preview > * { background: white; width: 8.5in; min-height: 11in; box-sizing: border-box; padding: 0.6in 0.65in 0.7in; margin: 0 0 20px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12), 0 10px 30px rgba(15, 23, 42, 0.08); overflow: hidden; }
 .pr-preview > *:last-child { margin-bottom: 0; }
 .pr-preview > .pr-cover { padding: 0.85in 0.8in 0.75in; height: 11in; background: var(--c-deep); }
+.pr-preview > .pr-divider { padding: 0; height: 11in; background: var(--c-deep); }
 /* Where the printer starts a new page inside the lesson, draw a page seam. */
 .pr-preview .pr-flow > .pr-sec + .pr-sec { margin: 0.7in -0.65in 0; padding: 0.6in 0.65in 0; border-top: 20px solid #E9EDF3; }
 .pr-preview [data-part] { cursor: pointer; border-radius: 6px; transition: background 0.15s; }
