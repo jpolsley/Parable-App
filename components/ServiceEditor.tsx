@@ -17,6 +17,7 @@ import { Button, EmptyState, Menu, MenuDivider, MenuItem } from './ui';
 
 const PREVIEW_KEY = 'parable.preview';
 const PREVIEW_KINDS: { id: PreviewKind; label: string }[] = [
+  { id: 'week', label: 'Whole week' },
   { id: 'lesson', label: 'Lesson' },
   { id: 'small', label: 'Small group' },
   { id: 'family', label: 'Family' },
@@ -44,7 +45,7 @@ export const ServiceEditor: React.FC<{ serviceId: string; focusPartId?: string }
   );
   const schedule = useMemo(() => (service ? buildSchedule(service) : {}), [service]);
   // Live preview of the printed pages beside the editor; the choice is remembered per browser.
-  const [pref, setPref] = useState(() => readPref<{ on: boolean; kind: PreviewKind; panel: 'preview' | 'details' }>({ on: true, kind: 'lesson', panel: 'preview' }));
+  const [pref, setPref] = useState(() => readPref<{ on: boolean; kind: PreviewKind; panel: 'preview' | 'details' }>({ on: true, kind: 'week', panel: 'preview' }));
   const savePref = (next: Partial<typeof pref>) => {
     const merged = { ...pref, ...next };
     setPref(merged);

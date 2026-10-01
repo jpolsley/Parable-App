@@ -48,22 +48,11 @@ export const PrintRoot: React.FC = () => {
   if ('seriesId' in scope && scope.kind.startsWith('series')) {
     const series = db.series.find((s) => s.id === scope.seriesId);
     if (!series) return null;
-    const weeks = weeksOf(db, series.id);
     const footer: Record<string, string> = { 'series-small': 'Small group guides', 'series-family': 'Family pages', 'series-takehome': 'Take-home cards' };
     return (
       <div className="pr-root pr" {...theme(series)}>
         <PageStyle footer={`${series.title} · ${footer[scope.kind] ?? 'Leader guide'}`} />
-        {(scope.kind === 'series-book' || scope.kind === 'series') && (
-          <>
-            <SeriesCover series={series} weeks={weeks} />
-            <Divider icon={Compass} kicker="Start here" title="Leader guide" sub={`${weeks.length} weeks · ${series.audience}`} />
-            <LeaderGuide series={series} weeks={weeks} />
-          </>
-        )}
-        {scope.kind === 'series-book' && weeks.map((w) => <FullWeek key={w.id} service={w} series={series} divider />)}
-        {scope.kind === 'series-small' && weeks.map((w) => <SmallGroupPage key={w.id} service={w} series={series} />)}
-        {scope.kind === 'series-family' && weeks.map((w) => <FamilyPage key={w.id} service={w} series={series} />)}
-        {scope.kind === 'series-takehome' && weeks.map((w) => <TakeHome key={w.id} service={w} series={series} />)}
+        <SeriesBook kind={scope.kind} series={series} weeks={weeksOf(db, series.id)} />
       </div>
     );
   }
@@ -76,6 +65,41 @@ export const PrintRoot: React.FC = () => {
     <div className="pr-root pr" {...theme(series)}>
       <PageStyle footer={footer} />
       <ServiceScope scope={scope} service={service} series={series} />
+    </div>
+  );
+};
+
+type SeriesKind = 'series-book' | 'series' | 'series-small' | 'series-family' | 'series-takehome';
+
+// Everything a series prints: the book (cover, leader guide, every week) or one kind of page for every week.
+const SeriesBook: React.FC<{ kind: SeriesKind | string; series: Series; weeks: Service[] }> = ({ kind, series, weeks }) => (
+  <>
+    {(kind === 'series-book' || kind === 'series') && (
+      <>
+        <SeriesCover series={series} weeks={weeks} />
+        <Divider icon={Compass} kicker="Start here" title="Leader guide" sub={`${weeks.length} weeks · ${series.audience}`} />
+        <LeaderGuide series={series} weeks={weeks} />
+      </>
+    )}
+    {kind === 'series-book' && weeks.map((w) => <FullWeek key={w.id} service={w} series={series} divider />)}
+    {kind === 'series-small' && weeks.map((w) => <SmallGroupPage key={w.id} service={w} series={series} />)}
+    {kind === 'series-family' && weeks.map((w) => <FamilyPage key={w.id} service={w} series={series} />)}
+    {kind === 'series-takehome' && weeks.map((w) => <TakeHome key={w.id} service={w} series={series} />)}
+  </>
+);
+
+// The whole printed book on screen, page by page, in the series' design.
+export const BookPreview: React.FC<{ series: Series; weeks: Service[]; onPartClick?: (partId: string) => void }> = ({ series, weeks, onPartClick }) => {
+  const { outer, zoom } = useFitZoom(0.8);
+  const onClick = (e: React.MouseEvent) => {
+    const id = (e.target as HTMLElement).closest<HTMLElement>('[data-part]')?.dataset.part;
+    if (id && onPartClick) onPartClick(id);
+  };
+  return (
+    <div ref={outer} className="pv-outer">
+      <div className="pr pr-preview" {...theme(series)} style={{ ...designVars(series), zoom }} onClick={onClick}>
+        <SeriesBook kind="series-book" series={series} weeks={weeks} />
+      </div>
     </div>
   );
 };
@@ -112,7 +136,7 @@ const ServiceScope: React.FC<{ scope: PrintScope; service: Service; series?: Ser
 
 // ---------- Live preview (on screen, next to the editor) ----------
 
-export type PreviewKind = 'lesson' | 'small' | 'family' | 'takehome' | 'run-sheet' | 'supplies';
+export type PreviewKind = 'week' | 'lesson' | 'small' | 'family' | 'takehome' | 'run-sheet' | 'supplies';
 
 const SHEET_PX = 816; // 8.5in at 96 dpi
 
@@ -131,7 +155,7 @@ export const PrintPreview: React.FC<{ service: Service; series?: Series; kind: P
     <div ref={outer} className="pv-outer">
       {empty ? <p className="pv-empty">{empty}</p> : (
         <div className="pr pr-preview" {...theme(series)} style={{ ...designVars(series), zoom }} onClick={onClick}>
-          <ServiceScope scope={{ kind }} service={service} series={series} />
+          {kind === 'week' ? <FullWeek service={service} series={series} divider /> : <ServiceScope scope={{ kind }} service={service} series={series} />}
         </div>
       )}
     </div>
