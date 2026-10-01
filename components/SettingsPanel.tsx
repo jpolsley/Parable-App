@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, AlertTriangle, Plug } from 'lucide-react';
-import { AIServer, AISettings, DEFAULT_SETTINGS, serverKind } from '../services/aiSettings';
+import { AIServer, AISettings, DEFAULT_SETTINGS, cleanBaseUrl, serverKind } from '../services/aiSettings';
 import { testConnection } from '../services/aiService';
 import { useStore } from '../store/StoreContext';
 import { Button, Label, Modal, Toggle, inputClass } from './ui';
@@ -32,7 +32,7 @@ export const SettingsPanel: React.FC = () => {
   }, [settingsOpen, aiSettings]);
 
   const update = (field: 'baseUrl' | 'model' | 'apiKey') => (e: React.ChangeEvent<HTMLInputElement>) => setDraft({ ...draft, [field]: e.target.value });
-  const cleaned = () => ({ ...draft, baseUrl: draft.baseUrl.trim(), model: draft.model.trim(), apiKey: draft.apiKey.trim() });
+  const cleaned = () => ({ ...draft, baseUrl: cleanBaseUrl(draft.baseUrl), model: draft.model.trim(), apiKey: draft.apiKey.trim() });
 
   const test = async () => {
     setTesting(true);

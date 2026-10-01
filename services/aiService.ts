@@ -2,7 +2,7 @@ import { BookDesign, BookDesignPatch, FamilyCues, Part, Section, Series, Service
 import { applyPatch, describeDesign } from '../lib/design';
 import { newPart, newSection, newSeries, newService, newSupply } from '../lib/factory';
 import { PART_TYPE_KEYS, PART_TYPES } from '../lib/partTypes';
-import { AISettings, serverKind, serverOrigin } from './aiSettings';
+import { AISettings, cleanBaseUrl, serverKind, serverOrigin } from './aiSettings';
 
 interface ChatMessage {
   role: 'system' | 'user';
@@ -11,7 +11,7 @@ interface ChatMessage {
 
 const SYSTEM = "You are an experienced children's and youth ministry curriculum writer. You prioritize literary context, historical background, and Jesus-centered theology, and you write engaging, age-appropriate content that a volunteer leader can read and use directly. Avoid Christian jargon where possible; use fresh language.";
 
-const endpoint = (settings: AISettings, path: string) => `${settings.baseUrl.replace(/\/+$/, '')}${path}`;
+const endpoint = (settings: AISettings, path: string) => `${cleanBaseUrl(settings.baseUrl)}${path}`;
 
 const headers = (settings: AISettings) => {
   const h: Record<string, string> = { 'Content-Type': 'application/json' };

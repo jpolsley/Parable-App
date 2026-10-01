@@ -14,8 +14,11 @@ export interface AISettings {
 export const serverKind = (s: AISettings): Exclude<AIServer, 'auto'> =>
   s.server !== 'auto' ? s.server : /:11434(\/|$)/.test(s.baseUrl) ? 'ollama' : /:8787(\/|$)/.test(s.baseUrl) ? 'steward' : 'openai';
 
+// Pull the address out of whatever was typed or pasted ("Ollama: http://localhost:11434/v1 " → the URL).
+export const cleanBaseUrl = (u: string) => (u.match(/https?:\/\/[^\s"'<>]+/i)?.[0] ?? u.trim()).replace(/\/+$/, '');
+
 // http://localhost:8787/v1 → http://localhost:8787
-export const serverOrigin = (s: AISettings) => s.baseUrl.trim().replace(/\/+$/, '').replace(/\/v1$/, '');
+export const serverOrigin = (s: AISettings) => cleanBaseUrl(s.baseUrl).replace(/\/v1$/, '');
 
 const STORAGE_KEY = 'parable.aiSettings';
 
