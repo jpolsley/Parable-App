@@ -234,8 +234,14 @@ export const DesignDialog: React.FC<{ open: boolean; onClose: () => void; series
 
             {(['cover', 'divider'] as const).map((kind) => (
               <details key={kind} className="group">
-                <summary className="text-sm font-semibold cursor-pointer select-none">{kind === 'cover' ? 'Cover' : 'Divider pages'} <span className="font-normal text-gray-400">· {draft[kind].motifs.length} shapes</span></summary>
-                <div className="space-y-3 mt-3">
+                <summary className="text-sm font-semibold cursor-pointer select-none">{kind === 'cover' ? 'Cover' : 'Divider pages'} <span className="font-normal text-gray-400">· {draft.custom[kind] ? 'written by Diana' : `${draft[kind].motifs.length} shapes`}</span></summary>
+                {draft.custom[kind] && (
+                  <div className="mt-3 rounded-lg bg-accent/5 border border-accent/20 p-3 text-xs space-y-2">
+                    <p>Diana wrote this page from scratch. Ask her for changes (e.g. "make the title bigger on the cover"), or switch back to the built-in design below.</p>
+                    <Button type="button" size="sm" variant="outline" onClick={() => edit({ custom: { [kind]: '' } })}>Use the built-in design</Button>
+                  </div>
+                )}
+                <div className={`space-y-3 mt-3 ${draft.custom[kind] ? 'hidden' : ''}`}>
                   <div>
                     <Label>Background</Label>
                     <div className="flex gap-1.5">

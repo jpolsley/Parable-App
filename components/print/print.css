@@ -91,6 +91,11 @@
 .pr-divider[data-dir="up"]:not([data-align="right"]) .pr-divider-body { margin-left: var(--vt-room); }
 .pr-divider[data-dir="up"][data-align="right"] .pr-divider-body { margin-right: var(--vt-room); }
 
+/* Pages Diana wrote: her root element fills the page; nothing escapes it. */
+.pr-custom { padding: 0 !important; display: block !important; }
+.pr-custom > * { position: relative; width: 8.5in; height: 11in; overflow: hidden; }
+.pr-custom svg { overflow: hidden; }
+
 /* ---------- Series at a glance ---------- */
 .pr-weeks { list-style: none; margin: 0; padding: 0; border-top: 1.5pt solid var(--ink); }
 .pr-weeks li { display: grid; grid-template-columns: 0.75in 1fr 1.35in; gap: 14pt; padding: 12pt 0; border-bottom: 0.75pt solid var(--rule); break-inside: avoid; }
@@ -378,6 +383,7 @@
 .pr-preview > .pr-cover { height: 11in; }
 .pr-preview > .pr-cover[data-layout="top"] { padding-top: 1.5in; }
 .pr-preview > .pr-divider { padding: 0.9in 0.85in; height: 11in; }
+.pr-preview > .pr-custom { padding: 0; }
 /* Where the printer starts a new page inside the lesson, draw a page seam. */
 .pr-preview .pr-flow > .pr-sec + .pr-sec { margin: 0.7in -0.65in 0; padding: 0.6in 0.65in 0; border-top: 20px solid #E9EDF3; }
 .pr-preview [data-part] { cursor: pointer; border-radius: 6px; transition: background 0.15s; }

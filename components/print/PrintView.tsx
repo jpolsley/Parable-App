@@ -2,6 +2,7 @@ import React from 'react';
 import { DesignSurface, Part, PrintScope, Section, Series, Service } from '../../types';
 import { designAttrs, designOf, designVars, resolvePalette, surfaceText, toneColor } from '../../lib/design';
 import { MotifLayer, PageMark } from './Motifs';
+import { fillCustom } from '../../lib/customPage';
 import { PART_TYPES } from '../../lib/partTypes';
 import { aggregateSupplies, supplyTotal } from '../../lib/supplies';
 import { buildSchedule, formatClock, formatDate, formatDuration, sectionMinutes, serviceMinutes, visibleParts } from '../../lib/time';
@@ -242,8 +243,37 @@ const Surface: React.FC<{ kind: 'cover' | 'divider'; series?: Series; uid: strin
   );
 };
 
+// A page Diana wrote as HTML/SVG (already cleaned), with the series' text filled in.
+const CustomPage: React.FC<{ kind: 'cover' | 'divider'; series?: Series; values: Record<string, string> }> = ({ kind, series, values }) => {
+  const p = resolvePalette(designOf(series));
+  return (
+    <section
+      className={`${kind === 'cover' ? 'pr-cover' : 'pr-divider'} pr-custom`}
+      style={{ background: p.deep, color: '#FFFFFF' }}
+      dangerouslySetInnerHTML={{ __html: fillCustom(designOf(series).custom[kind], values) }}
+    />
+  );
+};
+
 const SeriesCover: React.FC<{ series: Series; weeks: Service[] }> = ({ series, weeks }) => {
   const sf = designOf(series).cover;
+  if (designOf(series).custom.cover) {
+    return (
+      <CustomPage
+        kind="cover"
+        series={series}
+        values={{
+          title: series.title,
+          subtitle: series.bigIdea || series.description,
+          eyebrow: `${weeks.length}-week series · ${series.audience}`,
+          dates: weeks.length ? `${formatDate(weeks[0].date)} – ${formatDate(weeks[weeks.length - 1].date)}` : '',
+          weeks: pad2(weeks.length),
+          audience: series.audience,
+          verse: series.memoryVerse,
+        }}
+      />
+    );
+  }
   const label = (
     <>
       <p className="pr-eyebrow">{weeks.length}-week series · {series.audience}</p>
@@ -279,6 +309,9 @@ const SeriesCover: React.FC<{ series: Series; weeks: Service[] }> = ({ series, w
 // Full-bleed section opener, like a chapter page.
 const Divider: React.FC<{ series?: Series; uid: string; icon: React.ElementType; kicker: string; title: string; sub?: string; idea?: string }> = ({ series, uid, icon: Icon, kicker, title, sub, idea }) => {
   const box = designOf(series).divider.titleBox;
+  if (designOf(series).custom.divider) {
+    return <CustomPage kind="divider" series={series} values={{ title, subtitle: sub ?? '', kicker, eyebrow: kicker, idea: idea ?? '' }} />;
+  }
   const label = (
     <>
       <p className="pr-eyebrow">{kicker}</p>
