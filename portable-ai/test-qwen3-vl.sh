@@ -1,6 +1,6 @@
 #!/bin/bash
 # Quick test: can Qwen3-VL 8B be Diana's one model for Parable (text + images)?
-# Usage:  bash test-qwen3-vl.sh ~/Downloads/reference.webp
+# Usage:  bash ~/test-vl.sh ~/Desktop/reference.png
 # Needs Ollama running on this Mac (the Steward app starts it). Nothing here changes Parable.
 
 set -u
@@ -9,8 +9,9 @@ MODEL="${PARABLE_VL_MODEL:-qwen3-vl:8b}"
 OLLAMA="${OLLAMA_URL:-http://localhost:11434}"
 
 if [ -z "$IMG" ] || [ ! -f "$IMG" ]; then
-  echo "Usage: bash test-qwen3-vl.sh /path/to/reference-image"
-  echo "Tip: type 'bash test-qwen3-vl.sh ' then drag the image into Terminal and press Return."
+  [ -n "$IMG" ] && echo "Can't find the file: $IMG"
+  echo "Usage: bash ~/test-vl.sh /path/to/reference-image"
+  echo "Tip: type 'bash ~/test-vl.sh ' then drag the image into Terminal (don't type the name; screenshot names contain a hidden special space) and press Return."
   exit 1
 fi
 if ! curl -s "$OLLAMA/api/tags" >/dev/null; then
