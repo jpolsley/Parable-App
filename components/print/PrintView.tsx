@@ -1,5 +1,6 @@
 import React from 'react';
-import { Part, PrintScope, Section, Series, SeriesColor, Service } from '../../types';
+import { Part, PrintScope, Section, Series, Service } from '../../types';
+import { designOf, designVars } from '../../lib/design';
 import { PART_TYPES } from '../../lib/partTypes';
 import { aggregateSupplies, supplyTotal } from '../../lib/supplies';
 import { buildSchedule, formatClock, formatDate, formatDuration, sectionMinutes, serviceMinutes, visibleParts } from '../../lib/time';
@@ -13,21 +14,8 @@ import { FamilyCues } from '../../types';
 import { partReady } from '../../lib/readiness';
 import './print.css';
 
-const PALETTE: Record<SeriesColor, [string, string, string, string]> = {
-  // base, deep, soft, line
-  indigo: ['#4F46E5', '#1E1B4B', '#EEF2FF', '#C7D2FE'],
-  sky: ['#0284C7', '#082F49', '#E0F2FE', '#BAE6FD'],
-  emerald: ['#059669', '#022C22', '#D1FAE5', '#A7F3D0'],
-  amber: ['#D97706', '#451A03', '#FEF3C7', '#FDE68A'],
-  rose: ['#E11D48', '#4C0519', '#FFE4E6', '#FECDD3'],
-  violet: ['#7C3AED', '#2E1065', '#EDE9FE', '#DDD6FE'],
-  slate: ['#475569', '#0F172A', '#F1F5F9', '#CBD5E1'],
-};
-
-const vars = (color: SeriesColor = 'indigo') => {
-  const [c, deep, soft, line] = PALETTE[color];
-  return { '--c': c, '--c-deep': deep, '--c-soft': soft, '--c-line': line } as React.CSSProperties;
-};
+// Colors, fonts, corners and heading case for a series (or the default look).
+const theme = (series?: Series) => ({ style: designVars(series), 'data-caps': designOf(series).headings === 'caps' ? '' : undefined });
 
 const cssString = (s: string) => `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, ' ')}"`;
 
@@ -63,7 +51,7 @@ export const PrintRoot: React.FC = () => {
     const weeks = weeksOf(db, series.id);
     const footer: Record<string, string> = { 'series-small': 'Small group guides', 'series-family': 'Family pages', 'series-takehome': 'Take-home cards' };
     return (
-      <div className="pr-root pr" style={vars(series.color)}>
+      <div className="pr-root pr" {...theme(series)}>
         <PageStyle footer={`${series.title} · ${footer[scope.kind] ?? 'Leader guide'}`} />
         {(scope.kind === 'series-book' || scope.kind === 'series') && (
           <>
@@ -85,7 +73,7 @@ export const PrintRoot: React.FC = () => {
   const series = service.seriesId ? db.series.find((s) => s.id === service.seriesId) : undefined;
   const footer = [series?.title, series && service.week ? `Week ${service.week}` : '', service.title].filter(Boolean).join(' · ');
   return (
-    <div className="pr-root pr" style={vars(series?.color)}>
+    <div className="pr-root pr" {...theme(series)}>
       <PageStyle footer={footer} />
       <ServiceScope scope={scope} service={service} series={series} />
     </div>
@@ -130,17 +118,7 @@ const SHEET_PX = 816; // 8.5in at 96 dpi
 
 // The same pages the printer gets, drawn as paper sheets and scaled to fit the pane.
 export const PrintPreview: React.FC<{ service: Service; series?: Series; kind: PreviewKind; onPartClick?: (partId: string) => void }> = ({ service, series, kind, onPartClick }) => {
-  const outer = React.useRef<HTMLDivElement>(null);
-  const [zoom, setZoom] = React.useState(0.6);
-  React.useEffect(() => {
-    const el = outer.current;
-    if (!el) return;
-    const fit = () => setZoom(Math.min(1, (el.clientWidth - 32) / SHEET_PX));
-    fit();
-    const ro = new ResizeObserver(fit);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  const { outer, zoom } = useFitZoom();
   const empty =
     (kind === 'small' && !smallGroupGuide(service).has) ? 'No small group section yet. Add a section and set it to "Small group" to get this page.'
     : service.sections.every((s) => s.hidden || visibleParts(s).length === 0) ? 'Add a section and a few parts, and the printed pages will appear here.'
@@ -152,10 +130,42 @@ export const PrintPreview: React.FC<{ service: Service; series?: Series; kind: P
   return (
     <div ref={outer} className="pv-outer">
       {empty ? <p className="pv-empty">{empty}</p> : (
-        <div className="pr pr-preview" style={{ ...vars(series?.color), zoom }} onClick={onClick}>
+        <div className="pr pr-preview" {...theme(series)} style={{ ...designVars(series), zoom }} onClick={onClick}>
           <ServiceScope scope={{ kind }} service={service} series={series} />
         </div>
       )}
+    </div>
+  );
+};
+
+// Sheets scaled to fit their container; shared by the week preview and the design picker.
+const useFitZoom = (max = 1) => {
+  const outer = React.useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = React.useState(0.5);
+  React.useEffect(() => {
+    const el = outer.current;
+    if (!el) return;
+    const fit = () => setZoom(Math.min(max, (el.clientWidth - 32) / SHEET_PX));
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return { outer, zoom };
+};
+
+// What a series looks like with a given design: the cover, then week 1's lesson and small group page.
+export const DesignPreview: React.FC<{ series: Series; weeks: Service[] }> = ({ series, weeks }) => {
+  // Smaller sheets so a whole page shows at once while picking a look.
+  const { outer, zoom } = useFitZoom(0.62);
+  const first = weeks[0];
+  return (
+    <div ref={outer} className="pv-outer">
+      <div className="pr pr-preview" {...theme(series)} style={{ ...designVars(series), zoom }}>
+        <SeriesCover series={series} weeks={weeks} />
+        {first && <Lesson service={first} series={series} />}
+        {first && <SmallGroupPage service={first} series={series} />}
+      </div>
     </div>
   );
 };
@@ -296,12 +306,6 @@ const Lesson: React.FC<{ service: Service; series?: Series }> = ({ service, seri
       <SessionPlan service={service} series={series} />
       <SessionOverview service={service} series={series} schedule={schedule} />
       <div className="pr-page pr-flow">
-        {service.bigIdea && (
-          <div className="pr-bottomline">
-            <p className="pr-label">Bottom line</p>
-            <p className="pr-serif">{service.bigIdea}</p>
-          </div>
-        )}
         {main.map((section, i) => <SectionBlock key={section.id} service={service} section={section} schedule={schedule} index={i} />)}
       </div>
     </>
@@ -437,41 +441,41 @@ const SmallGroupPage: React.FC<{ service: Service; series?: Series }> = ({ servi
         right={<span className="pr-tag">{service.title}</span>}
       />
       {(service.bigIdea || service.keyVerse) && (
-        <div className="pr-sg-recap">
+        <div className="pr-sg-idea">
           {service.bigIdea && <div><p className="pr-label">Today's big idea</p><p className="pr-serif">{service.bigIdea}</p></div>}
-          {service.keyVerse && <div><p className="pr-label">Key verse</p><p className="pr-serif">{service.keyVerse}</p></div>}
+          {service.keyVerse && <div className="verse"><p className="pr-label">Key verse</p><p className="pr-serif">{service.keyVerse}</p></div>}
         </div>
       )}
-      <div className="pr-sg-grid">
-        <div>
-          {g.icebreaker && (
-            <div className="pr-sg-block">
-              <p className="pr-sg-kicker warm">Icebreaker</p>
-              <p className="pr-serif pr-sg-big">{g.icebreaker}</p>
-            </div>
-          )}
+      {g.icebreaker && (
+        <div className="pr-sg-open">
+          <p className="pr-sg-kicker warm">Open with</p>
+          <p className="pr-serif">{g.icebreaker}</p>
+        </div>
+      )}
+      {g.questions.length > 0 && (
+        <div className="pr-sg-questions">
+          <p className="pr-sg-kicker">Discussion</p>
+          <ol>
+            {g.questions.map((q, i) => <li key={i}><span>{i + 1}</span><p className="pr-serif">{q}</p></li>)}
+          </ol>
+        </div>
+      )}
+      {(g.prayer || g.challenge) && (
+        <div className={`pr-sg-close ${g.prayer && g.challenge ? 'two' : ''}`}>
           {g.prayer && (
-            <div className="pr-sg-block">
-              <p className="pr-sg-kicker">Prayer focus</p>
-              <p className="pr-serif pr-sg-big muted">{g.prayer}</p>
+            <div>
+              <p className="pr-sg-kicker">Pray together</p>
+              <p className="pr-serif pr-sg-pray">{g.prayer}</p>
             </div>
           )}
           {g.challenge && (
-            <div className="pr-sg-block">
-              <p className="pr-sg-kicker">This week's challenge</p>
+            <div>
+              <p className="pr-sg-kicker">This week</p>
               {paragraphs(g.challenge).map((para, i) => <p key={i} className="pr-sg-small">{para}</p>)}
             </div>
           )}
         </div>
-        {g.questions.length > 0 && (
-          <div className="pr-sg-questions">
-            <p className="pr-label">Discussion questions</p>
-            <ol>
-              {g.questions.map((q, i) => <li key={i}><span>{i + 1}</span><p>{q}</p></li>)}
-            </ol>
-          </div>
-        )}
-      </div>
+      )}
       {g.activities.map((a) => <PartBlock key={a.id} service={service} part={a} />)}
     </section>
   );
@@ -524,11 +528,10 @@ const SectionBlock: React.FC<{ service: Service; section: Section; schedule: Rec
         time={schedule[part.id]}
         lead={i === 0 && (
           <header className="pr-sec-head">
-            {index !== undefined && <span className="pr-sec-n">{pad2(index + 1)}</span>}
+            <p className="pr-eyebrow">
+              {[index !== undefined ? `Part ${index + 1}` : '', schedule[section.id], `${sectionMinutes(section)} min`].filter(Boolean).join(' · ')}
+            </p>
             <h2>{section.title}</h2>
-            <span className="pr-sec-time">
-              {schedule[section.id] && <>{schedule[section.id]} · </>}{sectionMinutes(section)} min
-            </span>
           </header>
         )}
       />
@@ -544,7 +547,7 @@ const Rich: React.FC<{ text: string }> = ({ text }) => {
   return (
     <>
       {m && <b className="pr-lead">{m[1]}. </b>}
-      {cueSegments(body).map((seg, j, all) => (seg.cue ? <span key={j} className={j === 0 && all.length > 1 && seg.text.length <= 40 ? 'pr-cue' : 'pr-direction'}>{seg.text}</span> : <React.Fragment key={j}>{seg.text}</React.Fragment>))}
+      {cueSegments(body).map((seg, j, all) => (seg.cue ? <span key={j} className={j === 0 && all.length > 1 && seg.text.length <= 60 ? 'pr-cue' : 'pr-direction'}>{seg.text}</span> : <React.Fragment key={j}>{seg.text}</React.Fragment>))}
     </>
   );
 };
@@ -572,7 +575,7 @@ const Blocks: React.FC<{ text: string; serif?: boolean }> = ({ text, serif }) =>
 
 // Scripture set like a reading: verse numbers become superscripts.
 const Reading: React.FC<{ text: string }> = ({ text }) => (
-  <div className={`pr-reading pr-serif ${text.length > 1400 ? 'cols' : ''}`}>
+  <div className={`pr-reading pr-serif ${text.length > 1100 ? 'cols' : ''}`}>
     {paragraphs(text).map((para, i) => {
       const cue = para.match(/^\[([^\]]+)\]$/);
       if (cue) return <p key={i} className="pr-reading-cue">{cue[1]}</p>;
@@ -672,20 +675,14 @@ const PartBlock: React.FC<{ service: Service; part: Part; time?: string; lead?: 
     part.inclusionTips.trim() && <M key="adapt" label="Adapt" tone="inclusion"><Blocks text={part.inclusionTips} /></M>,
     part.leaderNotes.trim() && <M key="note" label="Note" tone="note"><Blocks text={part.leaderNotes} /></M>,
   ].filter(Boolean);
-  // Keep the heading (and a section heading above it) on the same page as the first thing under it.
+  // Text flows to fill each page; CSS keeps headings attached to the first lines under them.
   return (
     <>
-      <div className={`pr-keep ${lead ? 'has-lead' : ''}`}>
-        {lead}
-        <article data-part={part.id} className={`pr-p ${part.optional ? 'deeper' : ''} ${point ? 'point' : ''} ${lead ? 'first' : ''} ${rows.length > 1 ? 'split' : ''}`}>
-          {head}
-          {rows[0]}
-        </article>
-      </div>
-      {rows.length > 1 && (
-        <article data-part={part.id} className={`pr-p pr-p-rest ${part.optional ? 'deeper' : ''} ${part.pageBreak ? 'pr-break-after' : ''}`}>{rows.slice(1)}</article>
-      )}
-      {rows.length <= 1 && part.pageBreak && <div className="pr-break-after" />}
+      {lead}
+      <article data-part={part.id} className={`pr-p ${part.optional ? 'deeper' : ''} ${point ? 'point' : ''} ${lead ? 'first' : ''} ${part.pageBreak ? 'pr-break-after' : ''}`}>
+        {head}
+        {rows}
+      </article>
     </>
   );
 };

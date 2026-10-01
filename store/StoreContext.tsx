@@ -5,6 +5,8 @@ import { migrateLegacySeries, reschedule, weeksOf } from '../lib/series';
 import { AISettings, loadSettings, saveSettings } from '../services/aiSettings';
 import { testConnection } from '../services/aiService';
 import { SAMPLES } from '../lib/samples';
+import { PRINT_FACES } from '../lib/design';
+import { fitSectionsToPages } from '../lib/printFit';
 
 const STORAGE_KEY = 'parable.db.v1';
 
@@ -287,14 +289,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     let cancelled = false;
     const done = () => setPrintJob(null);
     window.addEventListener('afterprint', done, { once: true });
-    const faces = [
-      "400 12pt 'Source Serif 4 Variable'", "italic 400 12pt 'Source Serif 4 Variable'",
-      "400 12pt 'Inter Variable'", "700 12pt 'Inter Variable'", "800 12pt 'Plus Jakarta Sans Variable'",
-    ];
-    const fontsReady = Promise.all(faces.map((f) => document.fonts.load(f).catch(() => null))).then(() => document.fonts.ready);
+    const fontsReady = Promise.all(PRINT_FACES.map((f) => document.fonts.load(f).catch(() => null))).then(() => document.fonts.ready);
     const timeout = new Promise((resolve) => setTimeout(resolve, 2500));
     Promise.race([fontsReady, timeout]).then(() => {
-      if (!cancelled) requestAnimationFrame(() => window.print());
+      if (cancelled) return;
+      requestAnimationFrame(() => {
+        const root = document.querySelector<HTMLElement>('.pr-root');
+        if (root) fitSectionsToPages(root);
+        window.print();
+      });
     });
     return () => {
       cancelled = true;

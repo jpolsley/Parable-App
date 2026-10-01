@@ -1,9 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, AlertTriangle, Plug } from 'lucide-react';
-import { AISettings, DEFAULT_SETTINGS } from '../services/aiSettings';
+import { AIServer, AISettings, DEFAULT_SETTINGS, serverKind } from '../services/aiSettings';
 import { testConnection } from '../services/aiService';
 import { useStore } from '../store/StoreContext';
 import { Button, Label, Modal, Toggle, inputClass } from './ui';
+
+const PRESETS: { name: string; hint: string; settings: Pick<AISettings, 'baseUrl' | 'model' | 'server'> & Partial<AISettings> }[] = [
+  {
+    name: 'Steward on this laptop',
+    hint: 'Recommended. Goes through your Steward server, which handles the browser rules for you. Paste your Steward key below.',
+    settings: { baseUrl: 'http://localhost:8787/v1', model: 'qwen3:8b', server: 'steward' },
+  },
+  {
+    name: 'Ollama directly',
+    hint: 'Qwen 3 (8B) on this computer. Ollama must allow this site (OLLAMA_ORIGINS).',
+    settings: { baseUrl: 'http://localhost:11434/v1', model: 'qwen3:8b', server: 'ollama', apiKey: '' },
+  },
+];
 
 export const SettingsPanel: React.FC = () => {
   const { aiSettings, setAiSettings, settingsOpen, setSettingsOpen } = useStore();
@@ -18,7 +31,7 @@ export const SettingsPanel: React.FC = () => {
     }
   }, [settingsOpen, aiSettings]);
 
-  const update = (field: keyof AISettings) => (e: React.ChangeEvent<HTMLInputElement>) => setDraft({ ...draft, [field]: e.target.value });
+  const update = (field: 'baseUrl' | 'model' | 'apiKey') => (e: React.ChangeEvent<HTMLInputElement>) => setDraft({ ...draft, [field]: e.target.value });
   const cleaned = () => ({ ...draft, baseUrl: draft.baseUrl.trim(), model: draft.model.trim(), apiKey: draft.apiKey.trim() });
 
   const test = async () => {
@@ -43,30 +56,56 @@ export const SettingsPanel: React.FC = () => {
           It works with any OpenAI-compatible server: Ollama, LM Studio, llama.cpp, vLLM, or LocalAI.
         </p>
         <Toggle checked={draft.enabled} onChange={(enabled) => setDraft({ ...draft, enabled })} label="Show AI helpers" />
-        <button
-          type="button"
-          onClick={() => { setDraft({ ...draft, enabled: true, baseUrl: 'http://localhost:11434/v1', model: 'qwen3:8b', apiKey: '' }); setStatus(null); }}
-          className="w-full text-left rounded-xl border border-line hover:border-accent hover:bg-accent-soft/50 p-3 transition-colors"
-        >
-          <span className="font-semibold text-sm block">Use my flash drive AI</span>
-          <span className="text-xs text-gray-500">Fills in Ollama on this computer with Qwen 3 (8B). Start the drive first, then click Test connection.</span>
-        </button>
+        <div className="grid sm:grid-cols-2 gap-2">
+          {PRESETS.map((p) => (
+            <button
+              key={p.name}
+              type="button"
+              onClick={() => { setDraft({ ...draft, enabled: true, ...p.settings }); setStatus(null); }}
+              className={`text-left rounded-xl border p-3 transition-colors hover:border-accent hover:bg-accent-soft/50 ${draft.enabled && serverKind(draft) === p.settings.server && draft.baseUrl === p.settings.baseUrl ? 'border-accent bg-accent-soft/50' : 'border-line'}`}
+            >
+              <span className="font-semibold text-sm block">{p.name}</span>
+              <span className="text-xs text-gray-500">{p.hint}</span>
+            </button>
+          ))}
+        </div>
 
         <fieldset disabled={!draft.enabled} className="space-y-4 disabled:opacity-50">
           <div>
             <Label htmlFor="ai-url">Server URL</Label>
             <input id="ai-url" className={inputClass} required value={draft.baseUrl} onChange={update('baseUrl')} placeholder={DEFAULT_SETTINGS.baseUrl} />
-            <p className="text-xs text-gray-400 mt-1">Ollama: http://localhost:11434/v1 · LM Studio: http://localhost:1234/v1</p>
+            <p className="text-xs text-gray-400 mt-1">Steward: http://localhost:8787/v1 · Ollama: http://localhost:11434/v1</p>
           </div>
           <div>
             <Label htmlFor="ai-model">Model</Label>
             <input id="ai-model" className={inputClass} required value={draft.model} onChange={update('model')} placeholder="qwen3:8b" />
           </div>
           <div>
-            <Label htmlFor="ai-key">API key (optional)</Label>
-            <input id="ai-key" className={inputClass} type="password" value={draft.apiKey} onChange={update('apiKey')} placeholder="Leave blank if your server doesn't need one" />
+            <Label htmlFor="ai-server">Server type</Label>
+            <select id="ai-server" className={inputClass} value={draft.server} onChange={(e) => setDraft({ ...draft, server: e.target.value as AIServer })}>
+              <option value="auto">Detect from the URL</option>
+              <option value="steward">Steward</option>
+              <option value="ollama">Ollama</option>
+              <option value="openai">Other OpenAI-compatible server</option>
+            </select>
+            <p className="text-xs text-gray-400 mt-1">Pick Steward or Ollama yourself when using a Tailscale address.</p>
+          </div>
+          <div>
+            <Label htmlFor="ai-key">{serverKind(draft) === 'steward' ? 'Steward key' : 'API key (optional)'}</Label>
+            <input
+              id="ai-key"
+              className={inputClass}
+              type="password"
+              required={serverKind(draft) === 'steward'}
+              value={draft.apiKey}
+              onChange={update('apiKey')}
+              placeholder={serverKind(draft) === 'steward' ? 'STEWARD_KEY from ~/Steward/server/steward.env' : "Leave blank if your server doesn't need one"}
+            />
             <p className="text-xs text-gray-400 mt-1">Saved only in this browser.</p>
           </div>
+          {serverKind(draft) === 'steward' && (
+            <Toggle checked={draft.useDocs} onChange={(useDocs) => setDraft({ ...draft, useDocs })} label="Let Steward add passages from my documents" />
+          )}
           <div className="flex items-center gap-3 flex-wrap">
             <Button type="button" size="sm" variant="outline" icon={Plug} loading={testing} onClick={test}>Test connection</Button>
             {status && (

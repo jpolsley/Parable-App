@@ -60,6 +60,14 @@ export interface Section {
 
 export type SeriesColor = 'indigo' | 'sky' | 'emerald' | 'amber' | 'rose' | 'violet' | 'slate';
 
+// How a series looks in print. Kept to a fixed set of choices so every combination prints well.
+export interface SeriesDesign {
+  fonts: 'modern' | 'classic' | 'editorial' | 'camp' | 'friendly' | 'bold';
+  corners: 'round' | 'soft' | 'square';
+  headings: 'normal' | 'caps';
+  accent: string; // #RRGGBB, or '' to use the series color
+}
+
 export interface Series {
   id: string;
   title: string;
@@ -70,6 +78,7 @@ export interface Series {
   bigIdea: string;
   memoryVerse: string;
   leaderGuide: string; // welcome letter for the "Start here" page of the printed book
+  design?: SeriesDesign; // missing means the default look
   createdAt: number;
   updatedAt: number;
 }

@@ -1,7 +1,8 @@
-import { FamilyCues, Part, Section, Series, Service, Supply } from '../types';
+import { FamilyCues, Part, Section, Series, SeriesDesign, Service, Supply } from '../types';
+import { LOOKS, normalizeDesign } from '../lib/design';
 import { newPart, newSection, newSeries, newService, newSupply } from '../lib/factory';
 import { PART_TYPE_KEYS, PART_TYPES } from '../lib/partTypes';
-import { AISettings } from './aiSettings';
+import { AISettings, serverKind, serverOrigin } from './aiSettings';
 
 interface ChatMessage {
   role: 'system' | 'user';
@@ -18,66 +19,148 @@ const headers = (settings: AISettings) => {
   return h;
 };
 
-const post = async (settings: AISettings, body: object): Promise<Response> => {
+const unreachable = (settings: AISettings) => {
+  const kind = serverKind(settings);
+  return new Error(
+    kind === 'steward' ? `Could not reach Steward at ${settings.baseUrl}. Is the Steward app running on this laptop?`
+    : kind === 'ollama' ? `Could not reach Ollama at ${settings.baseUrl}. Make sure it is running, and that it allows this site (OLLAMA_ORIGINS), or connect through Steward instead.`
+    : `Could not reach your AI server at ${settings.baseUrl}. Make sure it is running and allows requests from this site (CORS).`,
+  );
+};
+
+const send = async (settings: AISettings, url: string, body: object): Promise<Response> => {
   try {
-    return await fetch(endpoint(settings, '/chat/completions'), { method: 'POST', headers: headers(settings), body: JSON.stringify(body) });
+    return await fetch(url, { method: 'POST', headers: headers(settings), body: JSON.stringify(body) });
   } catch {
-    throw new Error(`Could not reach your AI server at ${settings.baseUrl}. Make sure it is running and allows requests from this site (CORS).`);
+    throw unreachable(settings);
   }
+};
+
+const failed = async (response: Response) => {
+  const detail = await response.text().catch(() => '');
+  if (response.status === 401 || response.status === 403) return new Error('The AI server refused the request. Check the key in AI settings.');
+  return new Error(`AI server returned ${response.status}${detail ? `: ${detail.slice(0, 200)}` : ''}`);
+};
+
+// Qwen 3 thinks out loud unless told not to; the /no_think switch goes at the end of the last user message.
+const noThink = (settings: AISettings, messages: ChatMessage[]): ChatMessage[] => {
+  if (!/qwen3/i.test(settings.model)) return messages;
+  const last = messages.length - 1;
+  return messages.map((m, i) => (i === last && m.role === 'user' ? { ...m, content: `${m.content} /no_think` } : m));
 };
 
 const chat = async (settings: AISettings, messages: ChatMessage[], json: boolean): Promise<string> => {
-  const body = { model: settings.model, messages, temperature: 0.7, stream: false };
+  const kind = serverKind(settings);
+  // Structured output is steadier from a small model with no sampling randomness.
+  const temperature = json ? 0 : 0.7;
+  let text: string | undefined;
 
-  // Ask for JSON mode first; some servers reject response_format, so retry without it.
-  let response = await post(settings, json ? { ...body, response_format: { type: 'json_object' } } : body);
-  if (json && (response.status === 400 || response.status === 422)) {
-    response = await post(settings, body);
+  if (kind === 'ollama') {
+    // Ollama's own endpoint can switch thinking off properly, keep the model loaded, and widen the context.
+    const url = `${serverOrigin(settings)}/api/chat`;
+    const body = {
+      model: settings.model,
+      messages,
+      stream: false,
+      think: false,
+      keep_alive: '24h',
+      options: { num_ctx: 12288, temperature },
+      ...(json ? { format: 'json' } : {}),
+    };
+    let response = await send(settings, url, body);
+    // Older Ollama versions don't know "think"; fall back to the prompt switch.
+    if (response.status === 400) response = await send(settings, url, { ...body, think: undefined, messages: noThink(settings, messages) });
+    if (!response.ok) throw await failed(response);
+    text = (await response.json())?.message?.content;
+  } else {
+    const url = endpoint(settings, '/chat/completions');
+    const body = {
+      model: settings.model,
+      messages: kind === 'steward' ? messages : noThink(settings, messages),
+      temperature,
+      stream: false,
+      ...(kind === 'steward' ? { use_docs: settings.useDocs } : {}),
+    };
+    // Ask for JSON mode first; some servers reject response_format, so retry without it.
+    let response = await send(settings, url, json ? { ...body, response_format: { type: 'json_object' } } : body);
+    if (json && (response.status === 400 || response.status === 422)) response = await send(settings, url, body);
+    if (!response.ok) throw await failed(response);
+    text = (await response.json())?.choices?.[0]?.message?.content;
   }
-  if (!response.ok) {
-    const detail = await response.text().catch(() => '');
-    throw new Error(`AI server returned ${response.status}${detail ? `: ${detail.slice(0, 200)}` : ''}`);
-  }
-  const data = await response.json();
-  const text: string | undefined = data?.choices?.[0]?.message?.content;
+
   if (!text) throw new Error('No response from the AI server.');
   // Reasoning models (e.g. Qwen 3, DeepSeek-R1) may include their thinking; keep only the answer.
-  return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+  return text.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/^[\s\S]*?<\/think>/i, '').trim();
 };
 
-// Local models sometimes wrap JSON in prose or code fences; pull out the outermost object.
-const chatJson = async <T>(settings: AISettings, prompt: string): Promise<T> => {
-  const text = await chat(settings, [
+// Small local models wrap JSON in prose or code fences and leave trailing commas; be forgiving.
+export const parseJsonLoose = <T>(text: string): T => {
+  const tryParse = (from: string, to: string) => {
+    const start = text.indexOf(from);
+    const end = text.lastIndexOf(to);
+    if (start === -1 || end <= start) return undefined;
+    const raw = text.slice(start, end + 1);
+    for (const candidate of [raw, raw.replace(/,\s*([}\]])/g, '$1')]) {
+      try {
+        return JSON.parse(candidate) as unknown;
+      } catch {
+        // try the next cleanup
+      }
+    }
+    return undefined;
+  };
+  // Whichever comes first is the outer value: a list of objects starts with "[", not its first "{".
+  const obj = text.indexOf('{');
+  const arr = text.indexOf('[');
+  const listFirst = arr !== -1 && (obj === -1 || arr < obj);
+  const found = listFirst ? tryParse('[', ']') ?? tryParse('{', '}') : tryParse('{', '}') ?? tryParse('[', ']');
+  if (found === undefined) throw new Error('The AI returned something that wasn\'t valid JSON. Try again.');
+  // A bare list where an object was expected: hand it back under a generic key.
+  return (Array.isArray(found) ? { items: found } : found) as T;
+};
+
+// Structured requests are their own focused call that asks for only the JSON.
+const chatJson = async <T>(settings: AISettings, prompt: string): Promise<T> =>
+  parseJsonLoose<T>(await chat(settings, [
     { role: 'system', content: `${SYSTEM} You always respond with a single valid JSON object and nothing else.` },
     { role: 'user', content: prompt },
-  ], true);
-  const start = text.indexOf('{');
-  const end = text.lastIndexOf('}');
-  if (start === -1 || end <= start) throw new Error('The AI response did not contain JSON.');
-  try {
-    return JSON.parse(text.slice(start, end + 1)) as T;
-  } catch {
-    throw new Error('The AI returned malformed JSON. Try again, or use a larger model.');
-  }
-};
+  ], true));
 
 const chatText = (settings: AISettings, prompt: string) =>
   chat(settings, [{ role: 'system', content: SYSTEM }, { role: 'user', content: prompt }], false);
 
 export const testConnection = async (settings: AISettings): Promise<string> => {
-  let response: Response;
-  try {
-    response = await fetch(endpoint(settings, '/models'), { headers: headers(settings) });
-  } catch {
-    throw new Error(`Could not reach ${settings.baseUrl}. Is the server running, and is CORS enabled?`);
+  const kind = serverKind(settings);
+  const get = async (url: string) => {
+    let response: Response;
+    try {
+      response = await fetch(url, { headers: headers(settings) });
+    } catch {
+      throw unreachable(settings);
+    }
+    if (response.status === 401 || response.status === 403) throw new Error('Connected, but the key was refused. Check the key.');
+    if (!response.ok) throw new Error(`Server responded with ${response.status}.`);
+    return response.json().catch(() => null);
+  };
+  const check = (models: string[], extra = '') => {
+    if (models.length && !models.some((m) => m === settings.model || m.startsWith(`${settings.model}:`))) {
+      return `Connected${extra}, but model "${settings.model}" wasn't listed. Available: ${models.slice(0, 8).join(', ')}`;
+    }
+    return `Connected${extra}.`;
+  };
+
+  if (kind === 'steward') {
+    const data = await get(`${serverOrigin(settings)}/health`);
+    const models: string[] = Array.isArray(data?.models) ? data.models.map((m: unknown) => (typeof m === 'string' ? m : (m as { name?: string })?.name ?? '')).filter(Boolean) : [];
+    const docs = typeof data?.docs === 'number' ? data.docs : typeof data?.documents === 'number' ? data.documents : undefined;
+    return check(models, ` to Steward${docs !== undefined ? ` (${docs} documents loaded)` : ''}`);
   }
-  if (!response.ok) throw new Error(`Server responded with ${response.status}.`);
-  const data = await response.json().catch(() => null);
-  const models: string[] = Array.isArray(data?.data) ? data.data.map((m: { id: string }) => m.id) : [];
-  if (models.length && !models.includes(settings.model)) {
-    return `Connected, but model "${settings.model}" wasn't listed. Available: ${models.slice(0, 8).join(', ')}`;
+  if (kind === 'ollama') {
+    const data = await get(`${serverOrigin(settings)}/api/tags`);
+    return check(Array.isArray(data?.models) ? data.models.map((m: { name: string }) => m.name) : [], ' to Ollama');
   }
-  return 'Connected.';
+  const data = await get(endpoint(settings, '/models'));
+  return check(Array.isArray(data?.data) ? data.data.map((m: { id: string }) => m.id) : []);
 };
 
 // ---------- Context ----------
@@ -116,6 +199,15 @@ const FIELD_ASK: Record<TextField, string> = {
   leaderNotes: 'Write brief prep notes for the leader: what to review beforehand, what to watch for, and how this part connects to the big idea.',
 };
 
+// How text should be shaped so it prints well (the lesson layout reads these conventions).
+const FORMAT_RULES = [
+  'Formatting rules:',
+  '- Separate paragraphs with a blank line.',
+  '- Inside a script, directions for the leader go in square brackets, e.g. [Hold up the phone.] or [Pause for answers.]',
+  '- For a list, put each item on its own line starting with "• ".',
+  '- A labeled step keeps its label and colon, e.g. "The setup: Pair students up."',
+].join('\n');
+
 export const draftPartText = (settings: AISettings, service: Service, section: Section, part: Part, field: TextField, instruction: string) =>
   chatText(settings, [
     describeService(service, part.id),
@@ -125,6 +217,7 @@ export const draftPartText = (settings: AISettings, service: Service, section: S
     part[field] ? `The current text is:\n${part[field]}\n\nRevise or improve it.` : '',
     FIELD_ASK[field],
     instruction && `Additional direction from the leader: ${instruction}`,
+    field === 'script' || field === 'instructions' ? FORMAT_RULES : '',
     'Return only the text itself, with no preamble or headings.',
   ].filter(Boolean).join('\n'));
 
@@ -144,6 +237,17 @@ export const suggestSupplies = async (settings: AISettings, service: Service, pa
 
 const PART_SHAPE = `{"title":"...","type":"one of: ${PART_TYPE_KEYS.join(', ')}","minutes":5,"script":"word-for-word leader script","instructions":"numbered steps","supplies":[{"name":"...","qty":1,"per":"total|person|group"}]}`;
 
+// Naming conventions the printed lesson recognizes (numbered points, readings, challenges).
+const PART_RULES = [
+  'Part conventions:',
+  '- A teaching point is its own part titled "Point 1: <headline>" (type "script").',
+  '- A scripture reading is titled "Read: <reference>" (type "bible-verse"). Do not quote long passages from memory; put "Read <reference> aloud." in instructions instead.',
+  '- Discussion questions: type "discussion", script is numbered lines "1. …".',
+  '- A take-home action is titled "Weekly Challenge: <name>".',
+  '- script is only what the leader says out loud; instructions are directions for the leader.',
+  FORMAT_RULES,
+].join('\n');
+
 export const suggestParts = async (settings: AISettings, service: Service, section: Section, instruction: string): Promise<Part[]> => {
   const result = await chatJson<{ parts?: unknown[] }>(settings, [
     describeService(service),
@@ -151,6 +255,7 @@ export const suggestParts = async (settings: AISettings, service: Service, secti
     `Suggest 1–3 new parts for the "${section.title}" section that fit the big idea and complement what is already there.`,
     instruction && `Direction from the leader: ${instruction}`,
     `Respond as {"parts":[${PART_SHAPE}]}. Write full scripts and instructions, not outlines.`,
+    PART_RULES,
   ].filter(Boolean).join('\n'));
   return (result.parts ?? []).map((p) => newPart((p ?? {}) as Partial<Part>));
 };
@@ -167,7 +272,8 @@ export const draftService = async (
     params.series && `It is one week of the series "${params.series.title}".${params.series.bigIdea ? ` Series theme: ${params.series.bigIdea}` : ''}`,
     skeleton,
     `Respond as {"title":"...","bigIdea":"one sentence","scripture":"reference","keyVerse":"verse text (reference)","sections":[{"title":"...","parts":[${PART_SHAPE}]}]}.`,
-    'Write full scripts and instructions a volunteer can use directly.',
+    'Write full scripts and instructions a volunteer can use directly. The section for small group leaders should have "Small Group" in its title.',
+    PART_RULES,
   ].filter(Boolean).join('\n'));
   const service = newService({ ...result, sections: Array.isArray(result.sections) ? result.sections : [] });
   return { title: service.title, bigIdea: service.bigIdea, keyVerse: service.keyVerse, scripture: service.scripture, sections: service.sections };
@@ -212,16 +318,18 @@ interface WeekOutline {
 }
 
 interface WeekDetail {
-  keyVerse?: string;
-  hook?: string;
-  teaching?: string;
-  discussionQuestions?: string[];
-  challenge?: string;
-  icebreaker?: string;
-  prayerFocus?: string;
   objectives?: string[];
+  welcome?: string;
+  illustration?: { title?: string; script?: string; supplies?: unknown[] };
+  transition?: string;
+  background?: string;
+  teachingPoints?: { point?: string; script?: string }[];
+  teaching?: string;
+  challenge?: { title?: string; script?: string } | string;
+  icebreaker?: string;
+  discussionQuestions?: string[];
+  prayerFocus?: string;
   family?: Partial<FamilyCues>;
-  activity?: { title?: string; instructions?: string; supplies?: unknown[] };
 }
 
 export const draftSeries = async (
@@ -254,10 +362,15 @@ export const draftSeries = async (
     onProgress(`Writing week ${i + 1} of ${weeks.length}: ${week.title ?? ''}`);
     const d = await chatJson<WeekDetail>(settings, [
       `Series: "${seriesTitle}" for ${params.audience}. Week ${i + 1}: "${week.title}". Scripture: ${week.scripture}. Big idea: ${week.bigIdea}.`,
-      'Write the full lesson content.',
-      'Respond as {"keyVerse":"verse text (reference)","hook":"100-150 word opening story or illustration, as a script","teaching":"3 teaching points, each a headline followed by a 100-150 word script paragraph","discussionQuestions":["5 questions moving from observation to interpretation to application"],"challenge":"a specific practice for the week","objectives":["3-4 learning objectives, each starting with a verb"],"icebreaker":"one fun small group opening question tied to the theme","prayerFocus":"one sentence on what the small group should pray for","family":{"morning":"a verse or truth a parent can say to start the day","onTheGo":"something to talk about or do in the car","meal":"a question to ask at dinner","bedtime":"a short prayer to pray over their child"},"activity":{"title":"...","instructions":"numbered steps","supplies":[{"name":"...","qty":1,"per":"total|person|group"}]}}',
+      'Write the full lesson a volunteer leader can read and use directly.',
+      'Respond as {"objectives":["3 short objectives, each starting with a verb"],"welcome":"2-3 sentence welcome that introduces today\'s topic","illustration":{"title":"short name","script":"120-180 word opening story, object lesson, or game setup the leader says, with [directions] in brackets","supplies":[{"name":"...","qty":1,"per":"total|person|group"}]},"transition":"1-2 sentences that bridge from the illustration to the scripture","background":"2-4 sentences of historical or literary context for the passage","teachingPoints":[{"point":"short headline","script":"100-150 words the leader says"}] (exactly 3),"challenge":{"title":"short name","script":"a specific practice for this week, 2-4 sentences"},"icebreaker":"one fun small group opening question tied to the theme","discussionQuestions":["5 questions moving from observation to interpretation to application"],"prayerFocus":"one sentence on what the small group should pray for","family":{"morning":"a truth a parent can say to start the day","onTheGo":"something to talk about or do in the car","meal":"a question to ask at dinner","bedtime":"a short prayer to pray together"}}',
+      FORMAT_RULES,
     ].join('\n'));
     const questions = (d.discussionQuestions ?? []).map((q, n) => `${n + 1}. ${q}`).join('\n');
+    const challenge = typeof d.challenge === 'string' ? { title: '', script: d.challenge } : d.challenge ?? {};
+    const points = d.teachingPoints?.length
+      ? d.teachingPoints.map((t, n) => newPart({ title: `Point ${n + 1}: ${t.point ?? ''}`, type: 'script', minutes: 6, script: t.script }))
+      : [newPart({ title: week.title || 'Teaching', type: 'script', minutes: 18, script: d.teaching })];
     services.push(newService({
       title: week.title || `Week ${i + 1}`,
       seriesId: series.id,
@@ -265,31 +378,58 @@ export const draftSeries = async (
       audience: params.audience,
       bigIdea: week.bigIdea,
       scripture: week.scripture,
-      keyVerse: d.keyVerse,
       objectives: (d.objectives ?? []).join('\n'),
       family: d.family,
       sections: [
-        newSection({ title: 'Opening', parts: [newPart({ title: 'Welcome & Hook', type: 'script', minutes: 10, script: d.hook })] }),
-        newSection({ title: 'Worship', parts: [newPart({ title: 'Worship Set', type: 'worship', minutes: 15 })] }),
         newSection({
-          title: 'Teaching',
+          title: 'Opening',
           parts: [
-            newPart({ title: week.title || 'Teaching', type: 'bible-story', minutes: 20, script: d.teaching }),
-            newPart({ title: 'Key Verse', type: 'bible-verse', minutes: 3, script: d.keyVerse }),
+            newPart({ title: 'Welcome', type: 'script', minutes: 3, script: d.welcome }),
+            newPart({ title: `Illustration: ${d.illustration?.title || 'Opening Story'}`, type: 'script', minutes: 8, script: d.illustration?.script, supplies: d.illustration?.supplies }),
+            newPart({ title: 'Transition', type: 'script', minutes: 2, script: d.transition }),
           ],
+        }),
+        newSection({
+          title: 'Scripture',
+          parts: [
+            newPart({ title: `Read: ${week.scripture || 'Scripture'}`, type: 'bible-verse', minutes: 4, instructions: `Read ${week.scripture || "this week's passage"} aloud from your Bible.` }),
+            newPart({ title: 'Background', type: 'script', minutes: 3, script: d.background }),
+          ],
+        }),
+        newSection({ title: 'Teaching', parts: points }),
+        newSection({
+          title: 'Application',
+          parts: [newPart({ title: `Weekly Challenge: ${challenge.title || 'This Week'}`, type: 'script', minutes: 4, script: challenge.script })],
         }),
         newSection({
           title: 'Small Groups',
           parts: [
             newPart({ title: 'Icebreaker', type: 'discussion', minutes: 5, script: d.icebreaker }),
-            newPart({ title: d.activity?.title || 'Activity', type: 'group-activity', minutes: 15, instructions: d.activity?.instructions, supplies: d.activity?.supplies }),
             newPart({ title: 'Discussion', type: 'discussion', minutes: 15, script: questions }),
             newPart({ title: 'Prayer Focus', type: 'prayer', minutes: 5, script: d.prayerFocus }),
-            newPart({ title: 'Weekly Challenge', type: 'script', minutes: 5, script: d.challenge }),
           ],
         }),
       ],
     }));
   }
   return { series, weeks: services };
+};
+
+// ---------- Design from a description ----------
+
+// The model only picks from the built-in choices (and a color), so whatever it returns prints well.
+export const designFromDescription = async (settings: AISettings, description: string, series?: Series): Promise<{ design: SeriesDesign; why: string }> => {
+  const result = await chatJson<Record<string, unknown>>(settings, [
+    `A ministry leader describes the look they want for a printed curriculum book: "${description}".`,
+    series && `The series is "${series.title}" for ${series.audience}.${series.description ? ` ${series.description}` : ''}`,
+    'Choose settings from these options only:',
+    `- fonts: ${LOOKS.map((l) => `"${l.design.fonts}" (${l.blurb})`).join('; ')}`,
+    '- corners: "round", "soft", or "square"',
+    '- headings: "normal" or "caps" (all capitals)',
+    '- accent: one main color as a hex code like "#2F6B4F" that fits the description. Prefer rich, medium-dark colors; avoid pale ones.',
+    'Respond as {"fonts":"...","corners":"...","headings":"...","accent":"#RRGGBB","why":"one short sentence explaining the choice"}.',
+  ].filter(Boolean).join('\n'));
+  const design = normalizeDesign(result);
+  if (!design) throw new Error('The AI did not return a design. Try describing it differently.');
+  return { design, why: typeof result.why === 'string' ? result.why : '' };
 };

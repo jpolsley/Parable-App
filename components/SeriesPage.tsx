@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ArrowLeft, BookOpen, CalendarDays, Copy, Download, FileText, GripVertical, Layers, Plus, Printer, Scissors, Sunrise, Trash2, Users } from 'lucide-react';
+import { ArrowLeft, BookOpen, CalendarDays, Copy, Download, FileText, GripVertical, Layers, Palette, Plus, Printer, Scissors, Sunrise, Trash2, Users } from 'lucide-react';
 import { Service } from '../types';
 import { cloneService, newSeries, todayISO } from '../lib/factory';
 import { downloadJson, slug } from '../lib/files';
@@ -14,12 +14,14 @@ import { useStore } from '../store/StoreContext';
 import { shortDate } from './cards';
 import { restrictToVerticalAxis } from './dndModifiers';
 import { ColorPicker, NewServiceDialog } from './NewServiceDialog';
+import { DesignDialog } from './DesignDialog';
 import { Button, EmptyState, Label, Menu, MenuDivider, MenuItem, Meter, TextArea, inputClass } from './ui';
 
 export const SeriesPage: React.FC<{ seriesId: string }> = ({ seriesId }) => {
   const { db, updateSeries, deleteSeries, reorderWeeks, addWeeks, addSeries, deleteService, print, toast } = useStore();
   const series = db.series.find((s) => s.id === seriesId);
   const [addOpen, setAddOpen] = useState(false);
+  const [designOpen, setDesignOpen] = useState(false);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -82,6 +84,7 @@ export const SeriesPage: React.FC<{ seriesId: string }> = ({ seriesId }) => {
           </div>
           <div className="flex gap-2 shrink-0">
             <Button icon={Plus} onClick={() => setAddOpen(true)}>Add week</Button>
+            <Button variant="outline" icon={Palette} onClick={() => setDesignOpen(true)}>Design</Button>
             <Menu trigger={<Button variant="outline" icon={Printer}>Print</Button>}>
               <MenuItem icon={BookOpen} onClick={() => print('', { kind: 'series-book', seriesId: series.id })}>Series book (everything)</MenuItem>
               <MenuItem icon={FileText} onClick={() => print('', { kind: 'series', seriesId: series.id })}>Cover + leader guide</MenuItem>
@@ -175,6 +178,7 @@ export const SeriesPage: React.FC<{ seriesId: string }> = ({ seriesId }) => {
         </aside>
       </div>
 
+      <DesignDialog open={designOpen} onClose={() => setDesignOpen(false)} series={series} weeks={weeks} />
       <NewServiceDialog open={addOpen} onClose={() => setAddOpen(false)} seriesId={series.id} />
     </div>
   );
