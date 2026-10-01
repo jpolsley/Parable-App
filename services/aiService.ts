@@ -433,7 +433,7 @@ Fields and allowed values:
 - page.corners: round | soft | square.   page.headerRule (line under page titles): ink | accent | heavy.
 - page.mark (a tiny symbol on lesson page headers): none | x | ring | arrow | crosshair | barcode | dot.
 - components.questions: numbers | boxed.   components.scripture: panel | rule.
-- cover and divider pages: background (paper | ink | accent | secondary | muted | deep), layout (bottom | center | top), align (left | center | right), titleScale (0.7 to 1.4), showCount (true/false, cover only), motifs (list of shapes).
+- cover and divider pages: background (paper | ink | accent | secondary | muted | deep), layout (bottom | center | top), align (left | center | right), titleScale (0.7 to 1.4), titleDirection (across | up; up = huge vertical title reading bottom to top like a book spine), titleBox (none | outline | solid; a label box around the small text), showCount (true/false, cover only), motifs (list of shapes).
 - A motif: {"type": band|circle|ring|x|track|line|frame|arrow|grid|barcode|stripes|crosshair|label, "x": 0 to 1 (0 = left edge, 1 = right edge), "y": 0 to 1 (0 = top, 1 = bottom), "size": fraction of the page width, "aspect": width divided by height (for frame, grid, stripes, barcode, track), "rotation": degrees, "tone": paper|ink|accent|secondary|muted|deep, "style": solid|outline, "opacity": 0.05 to 1, "count": rings in a ring / bars in a barcode / cells in a grid, "text": short text for a label}.
   band = a long strip across the page (size = thickness); track = a rounded pill/rail shape; stripes = a box of thin diagonal lines; x = a bold X mark.
   Shapes may run past the page edges. Parable keeps the title area readable automatically.
@@ -450,26 +450,87 @@ export interface DesignProposal {
   note: string;
 }
 
+const parsePatch = (text: string) => {
+  const result = parseJsonLoose<Record<string, unknown>>(text);
+  // Small models sometimes skip the wrapper and return the patch itself.
+  const { note, patch: wrapped, ...rest } = result;
+  return { patch: (wrapped && typeof wrapped === 'object' ? wrapped : rest) as Record<string, unknown>, note: typeof note === 'string' ? note : '' };
+};
+
+const SURFACE_GUIDE = `Fields for one full-bleed page (the cover or a divider):
+{"background": paper|ink|accent|secondary|muted|deep, "layout": bottom|center|top, "align": left|center|right, "titleScale": 0.7 to 1.4,
+ "titleDirection": across|up (up = huge vertical title reading bottom to top, like a book spine), "titleBox": none|outline|solid (a label box around the small text), "showCount": true|false,
+ "motifs": [ {"type": band|circle|ring|x|track|line|frame|arrow|grid|barcode|stripes|crosshair|label, "x": 0-1 (0 left, 1 right), "y": 0-1 (0 top, 1 bottom), "size": fraction of page width, "aspect": width/height, "rotation": degrees, "tone": paper|ink|accent|secondary|muted|deep, "style": solid|outline, "opacity": 0.05-1, "count": number, "text": "short label"} ]}
+band = a long strip through (x,y), size = its thickness, rotation 90 makes it vertical (a band at x 0.01, size 0.05, rotation 90 is a colored spine down the left edge); track = rounded pill; stripes = a box of diagonal lines; frame = rectangle outline; label = small technical text.
+Shapes may run past the page edges; Parable keeps the title readable. Use 3 to 10 shapes.`;
+
 export const designPatch = async (
   settings: AISettings,
   current: BookDesign,
   instruction: string,
   reference?: { image: string; colors: string[] },
+  onProgress: (message: string) => void = () => {},
 ): Promise<DesignProposal> => {
-  const text = await chat(settings, [
+  const ask = instruction || 'Make the book feel like this reference.';
+
+  // Without a picture: one focused call that changes only what was asked.
+  if (!reference) {
+    onProgress('Diana is updating the design…');
+    const { patch, note } = parsePatch(await chat(settings, [
+      { role: 'system', content: DESIGN_GUIDE },
+      { role: 'user', content: `Current design: ${describeDesign(current)}\n\nThe leader says: "${ask}"` },
+    ], true));
+    return { design: applyPatch(current, patch), patch, note: note || 'Here is a new version. Preview it and apply it if you like it.' };
+  }
+
+  // With a picture, small steps work far better for a small model: study it once, then design the
+  // whole book's look, the cover, and the dividers in separate focused requests.
+  onProgress('Diana is studying the picture…');
+  const study = await chat(settings, [
+    {
+      role: 'user',
+      content: `You are a graphic designer. Study this picture as a style reference for a printed book cover. Respond with JSON only:
+{"background":"main background color #RRGGBB","ink":"main text color","accent":"strongest accent color","secondary":"another important color",
+ "headline":"describe the headline type (e.g. heavy condensed caps, elegant serif)","labels":"describe small text (e.g. monospace, tiny caps)",
+ "title":{"direction":"across or up (up = vertical, reading bottom to top)","position":"top, center or bottom","align":"left, center or right","size":"small, medium or huge"},
+ "labelBox":"none, outline or solid (is small text inside a box?)",
+ "shapes":[{"kind":"what it is","where":"where on the page","color":"which color"}],
+ "mood":"a few words","lessonPages":"how this style should carry into calm, readable lesson pages"}
+Colors measured from the picture, most common first: ${reference.colors.join(', ')}.`,
+    },
+  ], true, [reference.image]);
+  const analysis = JSON.stringify(parseJsonLoose<Record<string, unknown>>(study));
+
+  onProgress('Diana is choosing colors and type…');
+  const look = parsePatch(await chat(settings, [
     { role: 'system', content: DESIGN_GUIDE },
     {
       role: 'user',
-      content: [
-        `Current design: ${describeDesign(current)}`,
-        reference && `The attached image is a style reference. Translate its visual language (color, type character, shapes, composition, density) into this book. Do not copy its words. Colors measured from the image, most common first: ${reference.colors.join(', ')}.`,
-        `The leader says: "${instruction || 'Make the book feel like this reference.'}"`,
-      ].filter(Boolean).join('\n\n'),
+      content: `Current design: ${describeDesign(current)}\n\nReference picture, as studied: ${analysis}\n\nThe leader says: "${ask}"\n\nIn this step change ONLY palette, type, page and components so the whole book matches the reference while lesson pages stay readable. Do not include cover or divider. Respond {"patch": {...}, "note": "..."}.`,
     },
-  ], true, reference ? [reference.image] : []);
-  const result = parseJsonLoose<Record<string, unknown>>(text);
-  // Small models sometimes skip the wrapper and return the patch itself.
-  const { note, patch: wrapped, ...rest } = result;
-  const patch = (wrapped && typeof wrapped === 'object' ? wrapped : rest) as BookDesignPatch;
-  return { design: applyPatch(current, patch), patch, note: typeof note === 'string' ? note : 'Here is a new version. Preview it and apply it if you like it.' };
+  ], true));
+  let design = applyPatch(current, { palette: look.patch.palette, type: look.patch.type, page: look.patch.page, components: look.patch.components } as BookDesignPatch);
+
+  const surface = async (kind: 'cover' | 'divider') => {
+    const brief = kind === 'cover'
+      ? 'Design the COVER so it clearly echoes the reference: match its background, title direction, title placement and size, label box, and recreate its main shapes as motifs. Replace any current shapes that do not appear in the reference.'
+      : 'Design the DIVIDER pages (one opens each week) as a calmer echo of the cover: same background family and title treatment, two to five of the reference shapes.';
+    const reply = parseJsonLoose<Record<string, unknown>>(await chat(settings, [
+      { role: 'system', content: `You are Diana, art director for a printed church curriculum book. ${SURFACE_GUIDE}\nRespond with JSON only: {"${kind}": { ...all fields for this page... }}` },
+      {
+        role: 'user',
+        content: `Book colors: paper ${design.palette.paper}, ink ${design.palette.ink}, accent ${design.palette.accent}, secondary ${design.palette.secondary}, muted ${design.palette.muted}${design.palette.deep ? `, deep ${design.palette.deep}` : ''}.\nReference picture, as studied: ${analysis}\nCurrent ${kind}: ${JSON.stringify(design[kind])}\nThe leader says: "${ask}"\n\n${brief}`,
+      },
+    ], true));
+    const value = (reply[kind] && typeof reply[kind] === 'object' ? reply[kind] : reply) as Record<string, unknown>;
+    design = applyPatch(design, { [kind]: value } as BookDesignPatch);
+    return value;
+  };
+  onProgress('Diana is designing the cover…');
+  const cover = await surface('cover');
+  onProgress('Diana is designing the divider pages…');
+  const divider = await surface('divider');
+
+  const patch = { ...look.patch, cover, divider } as BookDesignPatch;
+  return { design, patch, note: look.note || 'I matched the reference across the book: colors and type, a new cover, and divider pages to go with it.' };
 };

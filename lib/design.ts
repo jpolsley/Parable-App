@@ -116,7 +116,7 @@ const ORB_DIVIDER: Motif[] = [
 ];
 
 const surface = (s: Partial<DesignSurface>): DesignSurface => ({
-  background: 'deep', layout: 'bottom', align: 'left', titleScale: 1, showCount: true, motifs: [], ...s,
+  background: 'deep', layout: 'bottom', align: 'left', titleScale: 1, titleDirection: 'across', titleBox: 'none', showCount: true, motifs: [], ...s,
 });
 
 export const DEFAULT_DESIGN: BookDesign = {
@@ -176,6 +176,8 @@ const normalizeSurface = (v: unknown, base: DesignSurface): DesignSurface => {
     layout: pick(o.layout, ['bottom', 'center', 'top'] as const, base.layout),
     align: pick(o.align, ['left', 'center', 'right'] as const, base.align),
     titleScale: num(o.titleScale, 0.7, 1.4, base.titleScale),
+    titleDirection: pick(o.titleDirection, ['across', 'up'] as const, base.titleDirection ?? 'across'),
+    titleBox: pick(o.titleBox, ['none', 'outline', 'solid'] as const, base.titleBox ?? 'none'),
     showCount: typeof o.showCount === 'boolean' ? o.showCount : base.showCount,
     motifs,
   };

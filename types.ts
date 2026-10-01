@@ -88,6 +88,8 @@ export interface DesignSurface {
   layout: 'bottom' | 'center' | 'top';
   align: 'left' | 'center' | 'right';
   titleScale: number; // 0.7–1.4
+  titleDirection: 'across' | 'up'; // 'up' sets the title huge and vertical, reading bottom to top, like a book spine
+  titleBox: 'none' | 'outline' | 'solid'; // a label box around the small text (eyebrow, theme)
   showCount: boolean; // the big "05 weeks" number on the cover
   motifs: Motif[];
 }
