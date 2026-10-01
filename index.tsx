@@ -10,6 +10,8 @@ import '@fontsource-variable/fraunces';
 import '@fontsource-variable/nunito';
 import '@fontsource-variable/space-grotesk';
 import '@fontsource/dm-serif-display';
+import '@fontsource/ibm-plex-mono/400.css';
+import '@fontsource/ibm-plex-mono/600.css';
 import './index.css';
 
 const rootElement = document.getElementById('root');

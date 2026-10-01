@@ -1,6 +1,7 @@
 import React from 'react';
-import { Part, PrintScope, Section, Series, Service } from '../../types';
-import { designOf, designVars } from '../../lib/design';
+import { DesignSurface, Part, PrintScope, Section, Series, Service } from '../../types';
+import { designAttrs, designOf, designVars, resolvePalette, surfaceText, toneColor } from '../../lib/design';
+import { MotifLayer, PageMark } from './Motifs';
 import { PART_TYPES } from '../../lib/partTypes';
 import { aggregateSupplies, supplyTotal } from '../../lib/supplies';
 import { buildSchedule, formatClock, formatDate, formatDuration, sectionMinutes, serviceMinutes, visibleParts } from '../../lib/time';
@@ -15,16 +16,18 @@ import { partReady } from '../../lib/readiness';
 import './print.css';
 
 // Colors, fonts, corners and heading case for a series (or the default look).
-const theme = (series?: Series) => ({ style: designVars(series), 'data-caps': designOf(series).headings === 'caps' ? '' : undefined });
+const theme = (series?: Series) => { const d = designOf(series); return { style: designVars(d), ...designAttrs(d) }; };
 
 const cssString = (s: string) => `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, ' ')}"`;
 
 // Page size, margins, and a running footer ("Series · Leader guide ........ 3") in the page margin.
-const PageStyle: React.FC<{ footer: string }> = ({ footer }) => (
+// The paper color is written in directly: CSS variables don't reach @page.
+const PageStyle: React.FC<{ footer: string; series?: Series }> = ({ footer, series }) => (
   <style>{`
     @page {
       size: letter;
       margin: 0.6in 0.65in 0.7in;
+      background: ${resolvePalette(designOf(series)).paper};
       @bottom-left { content: ${cssString(footer)}; font: 600 7.5pt 'Inter Variable', sans-serif; color: #94A3B8; letter-spacing: 0.04em; }
       @bottom-right { content: counter(page); font: 700 8pt 'Inter Variable', sans-serif; color: #64748B; }
     }
@@ -51,7 +54,7 @@ export const PrintRoot: React.FC = () => {
     const footer: Record<string, string> = { 'series-small': 'Small group guides', 'series-family': 'Family pages', 'series-takehome': 'Take-home cards' };
     return (
       <div className="pr-root pr" {...theme(series)}>
-        <PageStyle footer={`${series.title} · ${footer[scope.kind] ?? 'Leader guide'}`} />
+        <PageStyle series={series} footer={`${series.title} · ${footer[scope.kind] ?? 'Leader guide'}`} />
         <SeriesBook kind={scope.kind} series={series} weeks={weeksOf(db, series.id)} />
       </div>
     );
@@ -63,7 +66,7 @@ export const PrintRoot: React.FC = () => {
   const footer = [series?.title, series && service.week ? `Week ${service.week}` : '', service.title].filter(Boolean).join(' · ');
   return (
     <div className="pr-root pr" {...theme(series)}>
-      <PageStyle footer={footer} />
+      <PageStyle series={series} footer={footer} />
       <ServiceScope scope={scope} service={service} series={series} />
     </div>
   );
@@ -77,7 +80,7 @@ const SeriesBook: React.FC<{ kind: SeriesKind | string; series: Series; weeks: S
     {(kind === 'series-book' || kind === 'series') && (
       <>
         <SeriesCover series={series} weeks={weeks} />
-        <Divider icon={Compass} kicker="Start here" title="Leader guide" sub={`${weeks.length} weeks · ${series.audience}`} />
+        <Divider series={series} uid={`lg-${series.id}`} icon={Compass} kicker="Start here" title="Leader guide" sub={`${weeks.length} weeks · ${series.audience}`} />
         <LeaderGuide series={series} weeks={weeks} />
       </>
     )}
@@ -97,7 +100,7 @@ export const BookPreview: React.FC<{ series: Series; weeks: Service[]; onPartCli
   };
   return (
     <div ref={outer} className="pv-outer">
-      <div className="pr pr-preview" {...theme(series)} style={{ ...designVars(series), zoom }} onClick={onClick}>
+      <div className="pr pr-preview" {...theme(series)} style={{ ...designVars(designOf(series)), zoom }} onClick={onClick}>
         <SeriesBook kind="series-book" series={series} weeks={weeks} />
       </div>
     </div>
@@ -154,7 +157,7 @@ export const PrintPreview: React.FC<{ service: Service; series?: Series; kind: P
   return (
     <div ref={outer} className="pv-outer">
       {empty ? <p className="pv-empty">{empty}</p> : (
-        <div className="pr pr-preview" {...theme(series)} style={{ ...designVars(series), zoom }} onClick={onClick}>
+        <div className="pr pr-preview" {...theme(series)} style={{ ...designVars(designOf(series)), zoom }} onClick={onClick}>
           {kind === 'week' ? <FullWeek service={service} series={series} divider /> : <ServiceScope scope={{ kind }} service={service} series={series} />}
         </div>
       )}
@@ -178,17 +181,16 @@ const useFitZoom = (max = 1) => {
   return { outer, zoom };
 };
 
-// What a series looks like with a given design: the cover, then week 1's lesson and small group page.
+// What a series looks like with a given design: the cover, then all of week 1 (divider, lesson, small group, family).
 export const DesignPreview: React.FC<{ series: Series; weeks: Service[] }> = ({ series, weeks }) => {
   // Smaller sheets so a whole page shows at once while picking a look.
   const { outer, zoom } = useFitZoom(0.62);
   const first = weeks[0];
   return (
     <div ref={outer} className="pv-outer">
-      <div className="pr pr-preview" {...theme(series)} style={{ ...designVars(series), zoom }}>
+      <div className="pr pr-preview" {...theme(series)} style={{ ...designVars(designOf(series)), zoom }}>
         <SeriesCover series={series} weeks={weeks} />
-        {first && <Lesson service={first} series={series} />}
-        {first && <SmallGroupPage service={first} series={series} />}
+        {first && <FullWeek service={first} series={series} divider />}
       </div>
     </div>
   );
@@ -196,42 +198,71 @@ export const DesignPreview: React.FC<{ series: Series; weeks: Service[] }> = ({ 
 
 // ---------- Series ----------
 
-const SeriesCover: React.FC<{ series: Series; weeks: Service[] }> = ({ series, weeks }) => (
-  <section className="pr-cover">
-    <span className="pr-cover-orb a" />
-    <span className="pr-cover-orb b" />
-    <span className="pr-cover-orb c" />
-    <div className="pr-wordmark"><i /> Parable</div>
-    <div className="pr-cover-num"><b>{pad2(weeks.length)}</b><span>Weeks</span></div>
-    <p className="pr-eyebrow">{weeks.length}-week series · {series.audience}</p>
-    <h1 className="pr-cover-title">{series.title}</h1>
-    {(series.bigIdea || series.description) && <p className="pr-cover-theme pr-serif">{series.bigIdea || series.description}</p>}
-    <div className="pr-cover-foot">
-      <div className="pr-cover-meta">
-        {weeks.length > 0 && <div><span>Dates</span><b>{formatDate(weeks[0].date)} – {formatDate(weeks[weeks.length - 1].date)}</b></div>}
-        <div><span>Leader guide</span><b>{series.audience}</b></div>
+// Where text sits on a full-bleed page, as page fractions; shapes fade out behind it.
+const textZone = (layout: DesignSurface['layout'], align: DesignSurface['align']) => {
+  const y = layout === 'bottom' ? 0.5 : layout === 'center' ? 0.28 : 0.1;
+  const x = align === 'left' ? 0.06 : align === 'right' ? 0.2 : 0.1;
+  return { x, y, w: align === 'center' ? 0.8 : 0.74, h: 0.44 };
+};
+
+// A full-bleed surface (cover or divider): background, shapes, and the design's text placement.
+const Surface: React.FC<{ kind: 'cover' | 'divider'; series?: Series; uid: string; children: React.ReactNode; corner?: React.ReactNode }> = ({ kind, series, uid, children, corner }) => {
+  const d = designOf(series);
+  const sf = d[kind];
+  const p = resolvePalette(d);
+  const bg = toneColor(p, sf.background);
+  const text = surfaceText(p, sf.background);
+  return (
+    <section
+      className={kind === 'cover' ? 'pr-cover' : 'pr-divider'}
+      data-layout={sf.layout}
+      data-align={sf.align}
+      style={{ background: bg, color: text, '--title-scale': sf.titleScale } as React.CSSProperties}
+    >
+      <MotifLayer motifs={sf.motifs} palette={p} bg={bg} textZone={textZone(sf.layout, sf.align)} uid={uid} />
+      {corner}
+      <div className={kind === 'cover' ? 'pr-cover-body' : 'pr-divider-body'}>{children}</div>
+    </section>
+  );
+};
+
+const SeriesCover: React.FC<{ series: Series; weeks: Service[] }> = ({ series, weeks }) => {
+  const sf = designOf(series).cover;
+  return (
+    <Surface
+      kind="cover"
+      series={series}
+      uid={`cover-${series.id}`}
+      corner={
+        <>
+          <div className="pr-wordmark" data-side={sf.align === 'right' ? 'right' : 'left'}><i /> Parable</div>
+          {sf.showCount && <div className="pr-cover-num" data-side={sf.align === 'right' ? 'left' : 'right'}><b>{pad2(weeks.length)}</b><span>Weeks</span></div>}
+        </>
+      }
+    >
+      <p className="pr-eyebrow">{weeks.length}-week series · {series.audience}</p>
+      <h1 className="pr-cover-title">{series.title}</h1>
+      {(series.bigIdea || series.description) && <p className="pr-cover-theme pr-serif">{series.bigIdea || series.description}</p>}
+      <div className="pr-cover-foot">
+        <div className="pr-cover-meta">
+          {weeks.length > 0 && <div><span>Dates</span><b>{formatDate(weeks[0].date)} – {formatDate(weeks[weeks.length - 1].date)}</b></div>}
+          <div><span>Leader guide</span><b>{series.audience}</b></div>
+        </div>
+        {series.memoryVerse && <div className="pr-cover-verse pr-serif"><span>Memory verse</span>{series.memoryVerse}</div>}
       </div>
-      {series.memoryVerse && <div className="pr-cover-verse pr-serif"><span>Memory verse</span>{series.memoryVerse}</div>}
-    </div>
-  </section>
-);
+    </Surface>
+  );
+};
 
 // Full-bleed section opener, like a chapter page.
-const Divider: React.FC<{ icon: React.ElementType; kicker: string; title: string; sub?: string; idea?: string }> = ({ icon: Icon, kicker, title, sub, idea }) => (
-  <section className="pr-divider">
-    <svg className="pr-divider-art" viewBox="0 0 850 1100" preserveAspectRatio="none" aria-hidden="true">
-      <circle cx="425" cy="550" r="330" fill="var(--c)" opacity="0.32" />
-      <circle cx="425" cy="550" r="430" fill="none" stroke="white" strokeOpacity="0.14" strokeWidth="2" />
-      <circle cx="700" cy="170" r="40" fill="white" opacity="0.08" />
-    </svg>
-    <div className="pr-divider-body">
-      <span className="pr-divider-icon"><Icon /></span>
-      <p className="pr-eyebrow">{kicker}</p>
-      <h2>{title}</h2>
-      {sub && <p className="pr-divider-sub">{sub}</p>}
-      {idea && <p className="pr-divider-idea pr-serif">{idea}</p>}
-    </div>
-  </section>
+const Divider: React.FC<{ series?: Series; uid: string; icon: React.ElementType; kicker: string; title: string; sub?: string; idea?: string }> = ({ series, uid, icon: Icon, kicker, title, sub, idea }) => (
+  <Surface kind="divider" series={series} uid={uid}>
+    <span className="pr-divider-icon"><Icon /></span>
+    <p className="pr-eyebrow">{kicker}</p>
+    <h2>{title}</h2>
+    {sub && <p className="pr-divider-sub">{sub}</p>}
+    {idea && <p className="pr-divider-idea pr-serif">{idea}</p>}
+  </Surface>
 );
 
 const LEGEND: [React.ElementType, string, string][] = [
@@ -288,6 +319,8 @@ const FullWeek: React.FC<{ service: Service; series?: Series; divider?: boolean 
   <>
     {divider && (
       <Divider
+        series={series}
+        uid={`wk-${service.id}`}
         icon={Compass}
         kicker={series ? `${series.title} · ${formatDate(service.date)}` : formatDate(service.date)}
         title={service.week ? `Week ${service.week}` : service.title}
@@ -304,6 +337,7 @@ const FullWeek: React.FC<{ service: Service; series?: Series; divider?: boolean 
 const PageHead: React.FC<{ service: Service; series?: Series; kicker: string; title: string; right?: React.ReactNode }> = ({ service, series, kicker, title, right }) => (
   <header className="pr-head pr-head-split">
     <div>
+      <PageMark kind={designOf(series).page.mark} />
       <p className="pr-eyebrow">{series && service.week ? `Week ${service.week} · ` : ''}{kicker}</p>
       <h1>{title}</h1>
     </div>
