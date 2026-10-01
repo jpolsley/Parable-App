@@ -31,18 +31,26 @@ done
 
 # Ollama reads JPEG/PNG; convert anything else with the Mac's built-in tool, shrunk to keep it quick.
 TMP="$(mktemp -d)"
-sips -s format jpeg -Z 1280 "$IMG" --out "$TMP/ref.jpg" >/dev/null 2>&1 || cp "$IMG" "$TMP/ref.jpg"
-B64="$(base64 -i "$TMP/ref.jpg" | tr -d '\n')"
+if ! sips -s format jpeg -Z 1280 "$IMG" --out "$TMP/ref.jpg" >/dev/null 2>&1; then
+  echo "Couldn't read \"$IMG\" as a picture. Save the reference as a PNG or JPG (a screenshot works: Cmd+Shift+4) and try again."
+  rm -rf "$TMP"; exit 1
+fi
+base64 -i "$TMP/ref.jpg" | tr -d '\n' > "$TMP/ref.b64"
 
 # Pull the model's answer text out of Ollama's JSON reply (JavaScript is built into every Mac).
-answer() { osascript -l JavaScript -e 'function run(a){var r=JSON.parse(a[0]);return (r.message&&r.message.content)||r.error||"(no answer)"}' "$1"; }
+answer() { [ -z "$1" ] && { echo "(no reply from Ollama)"; return; }; osascript -l JavaScript -e 'function run(a){var r=JSON.parse(a[0]);return (r.message&&r.message.content)||r.error||"(no answer)"}' "$1"; }
 ask() { # $1 = prompt, $2 = include image (yes/no)
-  local prompt images=""
+  local prompt
   prompt="$(printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g' | tr '\n' ' ')"
-  [ "$2" = yes ] && images=",\"images\":[\"$B64\"]"
+  # The request goes in a file: an image is far too long for a command line.
+  {
+    printf '{"model":"%s","stream":false,"think":false,"format":"json","keep_alive":"10m","options":{"temperature":0,"num_ctx":10240},"messages":[{"role":"user","content":"%s"' "$MODEL" "$prompt"
+    if [ "$2" = yes ]; then printf ',"images":["'; cat "$TMP/ref.b64"; printf '"]'; fi
+    printf '}]}'
+  } > "$TMP/body.json"
   local start end out
   start=$(date +%s)
-  out="$(curl -s "$OLLAMA/api/chat" -d "{\"model\":\"$MODEL\",\"stream\":false,\"think\":false,\"format\":\"json\",\"keep_alive\":\"10m\",\"options\":{\"temperature\":0,\"num_ctx\":10240},\"messages\":[{\"role\":\"user\",\"content\":\"$prompt\"$images}]}")"
+  out="$(curl -s "$OLLAMA/api/chat" -d @"$TMP/body.json")"
   end=$(date +%s)
   answer "$out"
   echo
