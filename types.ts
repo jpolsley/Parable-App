@@ -110,8 +110,9 @@ export interface BookDesign {
   components: { questions: 'numbers' | 'boxed'; scripture: 'panel' | 'rule' };
   cover: DesignSurface;
   divider: DesignSurface;
-  // Pages Diana wrote as HTML + inline SVG (cleaned by lib/customPage.ts). When set, they replace the built-in cover / dividers.
-  custom: { cover: string; divider: string };
+  // From an imported layout file (cleaned by lib/customPage.ts): HTML + inline SVG pages that replace the built-in
+  // cover / dividers, and CSS scoped to this book that restyles any page.
+  custom: { name: string; cover: string; divider: string; css: string };
 }
 
 type DeepPartial<T> = { [K in keyof T]?: T[K] extends (infer U)[] ? Partial<U>[] : T[K] extends object ? DeepPartial<T[K]> : T[K] };
@@ -171,11 +172,23 @@ export interface FamilyCues {
   bedtime: string;
 }
 
+// A layout file (.parable-layout.json): a complete book design in code, made outside Parable and imported.
+export interface LayoutPack {
+  id: string;
+  name: string;
+  description: string;
+  design: BookDesignPatch; // colors, fonts and page settings
+  cover: string; // HTML + inline SVG for the cover, with {{placeholders}}
+  divider: string; // HTML + inline SVG for divider pages
+  css: string; // extra CSS for any page of the book, scoped when applied
+}
+
 export interface Database {
   version: 1;
   series: Series[];
   services: Service[];
   library: Part[];
+  layouts?: LayoutPack[];
 }
 
 export type PrintScope =

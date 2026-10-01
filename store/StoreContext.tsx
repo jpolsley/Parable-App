@@ -1,11 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { Database, Part, PrintScope, Series, Service } from '../types';
+import { Database, LayoutPack, Part, PrintScope, Series, Service } from '../types';
 import { clonePart, newPart, newSeries, newService } from '../lib/factory';
 import { migrateLegacySeries, reschedule, weeksOf } from '../lib/series';
 import { AISettings, loadSettings, saveSettings } from '../services/aiSettings';
 import { testConnection } from '../services/aiService';
 import { SAMPLES } from '../lib/samples';
 import { PRINT_FACES } from '../lib/design';
+import { readLayout } from '../lib/layouts';
 import { fitSectionsToPages } from '../lib/printFit';
 
 const STORAGE_KEY = 'parable.db.v1';
@@ -48,7 +49,8 @@ const readDb = (): Database => {
         Array.isArray(data.services) ? data.services : [],
         Array.isArray(data.series) ? data.series.map(newSeries) : [],
       );
-      return { version: 1, series, services, library: Array.isArray(data.library) ? data.library.map(newPart) : [] };
+      const layouts = Array.isArray(data.layouts) ? data.layouts.flatMap((l: unknown) => { try { return [readLayout(l)]; } catch { return []; } }) : [];
+      return { version: 1, series, services, library: Array.isArray(data.library) ? data.library.map(newPart) : [], layouts };
     }
   } catch {
     // unreadable storage: start fresh rather than crash
@@ -85,6 +87,8 @@ interface Store {
   saveToLibrary: (part: Part) => void;
   removeFromLibrary: (id: string) => void;
   importDatabase: (data: Partial<Database>) => number;
+  addLayout: (pack: LayoutPack) => void;
+  deleteLayout: (id: string) => void;
   toasts: Toast[];
   toast: (message: string, undo?: () => void) => void;
   dismissToast: (id: number) => void;
@@ -234,6 +238,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   // Merge a backup or a single exported service. Existing ids are replaced.
+  // Imported layout files, kept in this browser's library so any series can use them.
+  const addLayout = useCallback((pack: LayoutPack) => {
+    setDb((d) => ({ ...d, layouts: [pack, ...(d.layouts ?? []).filter((l) => l.id !== pack.id)] }));
+  }, []);
+  const deleteLayout = useCallback((id: string) => {
+    setDb((d) => ({ ...d, layouts: (d.layouts ?? []).filter((l) => l.id !== id) }));
+  }, []);
+
   const importDatabase = useCallback((data: Partial<Database>) => {
     const { services, series } = migrateLegacySeries(
       (data.services ?? []) as unknown as Record<string, unknown>[],
@@ -308,7 +320,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <StoreContext.Provider
       value={{
-        db, saveState, addServices, updateService, deleteService, addSeries, updateSeries, deleteSeries, reorderWeeks, addWeeks, moveToSeries, saveToLibrary, removeFromLibrary, importDatabase,
+        db, saveState, addServices, updateService, deleteService, addSeries, updateSeries, deleteSeries, reorderWeeks, addWeeks, moveToSeries, saveToLibrary, removeFromLibrary, importDatabase, addLayout, deleteLayout,
         toasts, toast, dismissToast, aiSettings, aiStatus, recheckAi, setAiSettings, settingsOpen, setSettingsOpen, printJob, print,
       }}
     >

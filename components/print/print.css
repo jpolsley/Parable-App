@@ -93,6 +93,8 @@
 
 /* Pages Diana wrote: her root element fills the page; nothing escapes it. */
 .pr-custom { padding: 0 !important; display: block !important; }
+.pr-custom.pr-divider, .pr-custom.pr-cover { text-align: left; }
+.pr-custom p:empty { display: none; }
 .pr-custom > * { position: relative; width: 8.5in; height: 11in; overflow: hidden; }
 .pr-custom svg { overflow: hidden; }
 

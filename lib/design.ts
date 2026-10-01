@@ -1,5 +1,5 @@
 import type React from 'react';
-import { sanitizeCustom } from './customPage';
+import { sanitizeCss, sanitizeCustom, scopeId } from './customPage';
 import { BookDesign, BookDesignPatch, DesignSurface, DesignTone, Motif, MotifType, Series, SeriesColor } from '../types';
 
 // ---------- The design language ----------
@@ -127,7 +127,7 @@ export const DEFAULT_DESIGN: BookDesign = {
   components: { questions: 'numbers', scripture: 'panel' },
   cover: surface({ motifs: ORB_COVER }),
   divider: surface({ layout: 'center', align: 'center', showCount: false, motifs: ORB_DIVIDER }),
-  custom: { cover: '', divider: '' },
+  custom: { name: '', cover: '', divider: '', css: '' },
 };
 
 // ---------- Normalizing (the safety layer) ----------
@@ -220,8 +220,10 @@ export const normalizeDesign = (v: unknown, base: BookDesign = DEFAULT_DESIGN): 
     cover: normalizeSurface(o.cover, base.cover),
     divider: normalizeSurface(o.divider, base.divider),
     custom: {
+      name: 'name' in obj(o.custom) ? String(obj(o.custom).name ?? '').slice(0, 80) : base.custom?.name ?? '',
       cover: 'cover' in obj(o.custom) ? sanitizeCustom(obj(o.custom).cover) : base.custom?.cover ?? '',
       divider: 'divider' in obj(o.custom) ? sanitizeCustom(obj(o.custom).divider) : base.custom?.divider ?? '',
+      css: 'css' in obj(o.custom) ? sanitizeCss(obj(o.custom).css) : base.custom?.css ?? '',
     },
   };
 };
@@ -302,12 +304,15 @@ export const designVars = (d: BookDesign): React.CSSProperties => {
 
 // Attributes for the print root: switches the CSS reads for case and component styles.
 export const designAttrs = (d: BookDesign) => ({
+  'data-custom': d.custom.css ? scopeId(d.custom.css) : undefined,
   'data-caps': d.type.headingCase === 'caps' ? '' : undefined,
   'data-label': d.type.label,
   'data-questions': d.components.questions,
   'data-scripture': d.components.scripture,
 });
 
-// The design as compact text for the model: what exists now and what each field can be.
-export const describeDesign = (d: BookDesign) =>
-  JSON.stringify({ ...d, custom: { cover: d.custom.cover ? '(Diana-written page)' : '', divider: d.custom.divider ? '(Diana-written page)' : '' } });
+// The design as compact text for the model (an imported layout's code is left out).
+export const describeDesign = (d: BookDesign) => {
+  const { custom, ...rest } = d;
+  return JSON.stringify(custom.name ? { ...rest, layout: custom.name } : rest);
+};
