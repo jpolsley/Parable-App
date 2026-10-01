@@ -38,7 +38,8 @@ fi
 base64 -i "$TMP/ref.jpg" | tr -d '\n' > "$TMP/ref.b64"
 
 # Pull the model's answer text out of Ollama's JSON reply (JavaScript is built into every Mac).
-answer() { [ -z "$1" ] && { echo "(no reply from Ollama)"; return; }; osascript -l JavaScript -e 'function run(a){var r=JSON.parse(a[0]);return (r.message&&r.message.content)||r.error||"(no answer)"}' "$1"; }
+# Also report how much the model generated and how fast, which shows hidden "thinking".
+answer() { [ -z "$1" ] && { echo "(no reply from Ollama)"; return; }; osascript -l JavaScript -e 'function run(a){var r=JSON.parse(a[0]);var out=(r.message&&r.message.content)||r.error||"(no answer)";var t=r.message&&r.message.thinking?r.message.thinking.length:0;var n=r.eval_count||0,d=(r.eval_duration||0)/1e9,p=(r.prompt_eval_duration||0)/1e9,l=(r.load_duration||0)/1e9;return out+"\n["+n+" tokens generated at "+(d?(n/d).toFixed(1):"?")+"/sec; reading the prompt "+p.toFixed(0)+"s; loading "+l.toFixed(0)+"s"+(t?"; hidden thinking: "+t+" characters":"")+"]"}' "$1"; }
 ask() { # $1 = prompt, $2 = include image (yes/no)
   local prompt
   prompt="$(printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g' | tr '\n' ' ')"
