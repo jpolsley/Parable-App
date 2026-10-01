@@ -6,6 +6,7 @@ import { AISettings, loadSettings, saveSettings } from '../services/aiSettings';
 import { testConnection } from '../services/aiService';
 import { SAMPLES } from '../lib/samples';
 import { PRINT_FACES } from '../lib/design';
+import { fitSectionsToPages } from '../lib/printFit';
 
 const STORAGE_KEY = 'parable.db.v1';
 
@@ -291,7 +292,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const fontsReady = Promise.all(PRINT_FACES.map((f) => document.fonts.load(f).catch(() => null))).then(() => document.fonts.ready);
     const timeout = new Promise((resolve) => setTimeout(resolve, 2500));
     Promise.race([fontsReady, timeout]).then(() => {
-      if (!cancelled) requestAnimationFrame(() => window.print());
+      if (cancelled) return;
+      requestAnimationFrame(() => {
+        const root = document.querySelector<HTMLElement>('.pr-root');
+        if (root) fitSectionsToPages(root);
+        window.print();
+      });
     });
     return () => {
       cancelled = true;

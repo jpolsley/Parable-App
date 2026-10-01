@@ -306,12 +306,6 @@ const Lesson: React.FC<{ service: Service; series?: Series }> = ({ service, seri
       <SessionPlan service={service} series={series} />
       <SessionOverview service={service} series={series} schedule={schedule} />
       <div className="pr-page pr-flow">
-        {service.bigIdea && (
-          <div className="pr-bottomline">
-            <p className="pr-label">Bottom line</p>
-            <p className="pr-serif">{service.bigIdea}</p>
-          </div>
-        )}
         {main.map((section, i) => <SectionBlock key={section.id} service={service} section={section} schedule={schedule} index={i} />)}
       </div>
     </>
@@ -681,22 +675,14 @@ const PartBlock: React.FC<{ service: Service; part: Part; time?: string; lead?: 
     part.inclusionTips.trim() && <M key="adapt" label="Adapt" tone="inclusion"><Blocks text={part.inclusionTips} /></M>,
     part.leaderNotes.trim() && <M key="note" label="Note" tone="note"><Blocks text={part.leaderNotes} /></M>,
   ].filter(Boolean);
-  // Keep the heading (and a section heading above it) with what's under it: all of a short part, or the first row of a long one.
-  const short = !isReading && part.script.length + part.instructions.length + part.leaderNotes.length + part.inclusionTips.length < 1100;
-  const cut = short ? rows.length : 1;
+  // Text flows to fill each page; CSS keeps headings attached to the first lines under them.
   return (
     <>
-      <div className={`pr-keep ${lead ? 'has-lead' : ''}`}>
-        {lead}
-        <article data-part={part.id} className={`pr-p ${part.optional ? 'deeper' : ''} ${point ? 'point' : ''} ${lead ? 'first' : ''} ${rows.length > cut ? 'split' : ''}`}>
-          {head}
-          {rows.slice(0, cut)}
-        </article>
-      </div>
-      {rows.length > cut && (
-        <article data-part={part.id} className={`pr-p pr-p-rest ${part.optional ? 'deeper' : ''} ${part.pageBreak ? 'pr-break-after' : ''}`}>{rows.slice(cut)}</article>
-      )}
-      {rows.length <= cut && part.pageBreak && <div className="pr-break-after" />}
+      {lead}
+      <article data-part={part.id} className={`pr-p ${part.optional ? 'deeper' : ''} ${point ? 'point' : ''} ${lead ? 'first' : ''} ${part.pageBreak ? 'pr-break-after' : ''}`}>
+        {head}
+        {rows}
+      </article>
     </>
   );
 };
