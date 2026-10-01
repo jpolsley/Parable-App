@@ -8,8 +8,8 @@
 set -euo pipefail
 
 MODEL="${PARABLE_MODEL:-qwen3:8b}"
-SITE="https://jpolsley.github.io/Parable-App/"
-ORIGIN="https://jpolsley.github.io"
+SITE="https://ministryai.github.io/Parable-App/"
+ORIGIN="https://ministryai.github.io,https://jpolsley.github.io"
 OLLAMA_URL="https://github.com/ollama/ollama/releases/latest/download/ollama-darwin.tgz"
 NEED_GB=9
 
@@ -66,7 +66,7 @@ BIN="$DIR/ollama/ollama"
 MODEL="$(cat "$DIR/model.txt" 2>/dev/null || echo qwen3:8b)"
 export OLLAMA_MODELS="$DIR/models"
 export OLLAMA_HOST="127.0.0.1:11434"
-export OLLAMA_ORIGINS="https://jpolsley.github.io"
+export OLLAMA_ORIGINS="https://ministryai.github.io,https://jpolsley.github.io"
 export OLLAMA_KEEP_ALIVE="30m"
 
 clear
@@ -104,7 +104,7 @@ printf '     Model:       %s\n\n' "$MODEL"
 printf '  Leave this window open while you use Parable.\n'
 printf '  Close it (or press Control-C) when you are done, then eject the drive.\n'
 
-open -a "Google Chrome" "https://jpolsley.github.io/Parable-App/" 2>/dev/null || open "https://jpolsley.github.io/Parable-App/"
+open -a "Google Chrome" "https://ministryai.github.io/Parable-App/" 2>/dev/null || open "https://ministryai.github.io/Parable-App/"
 wait $PID
 START
 chmod +x "$HOME_DIR/Start Parable AI.command" 2>/dev/null || true
