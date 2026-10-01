@@ -55,6 +55,7 @@ export const DesignDialog: React.FC<{ open: boolean; onClose: () => void; series
   const [ask, setAsk] = useState('');
   const [reference, setReference] = useState<ImageReference | null>(null);
   const [thinking, setThinking] = useState(false);
+  const [progress, setProgress] = useState('');
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
   const [showCurrent, setShowCurrent] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -94,7 +95,7 @@ export const DesignDialog: React.FC<{ open: boolean; onClose: () => void; series
     setThinking(true);
     setNote(null);
     try {
-      const result = await designPatch(aiSettings, draft, ask.trim(), reference ? { image: reference.image, colors: reference.colors } : undefined);
+      const result = await designPatch(aiSettings, draft, ask.trim(), reference ? { image: reference.image, colors: reference.colors } : undefined, setProgress);
       setDraft(result.design);
       setPending({ source: reference ? 'reference-image' : 'diana', prompt: ask.trim() || 'Match the reference picture', note: result.note });
       setNote({ ok: true, text: result.note });
@@ -170,7 +171,7 @@ export const DesignDialog: React.FC<{ open: boolean; onClose: () => void; series
                   <Button type="button" size="sm" variant="ghost" icon={ImagePlus} onClick={() => fileRef.current?.click()}>{reference ? 'Change picture' : 'Add picture'}</Button>
                   <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) attach(f); e.target.value = ''; }} />
                 </div>
-                {thinking && <p className="text-xs text-gray-500">Diana is working on it. With a picture this takes about half a minute.</p>}
+                {thinking && <p className="text-xs text-gray-500">{progress || 'Diana is working on it…'} {reference ? 'With a picture this takes about a minute.' : ''}</p>}
                 {note && <p className={`text-xs ${note.ok ? 'text-gray-700' : 'text-red-700'}`}>{note.text}</p>}
               </div>
             ) : (
@@ -233,8 +234,14 @@ export const DesignDialog: React.FC<{ open: boolean; onClose: () => void; series
 
             {(['cover', 'divider'] as const).map((kind) => (
               <details key={kind} className="group">
-                <summary className="text-sm font-semibold cursor-pointer select-none">{kind === 'cover' ? 'Cover' : 'Divider pages'} <span className="font-normal text-gray-400">· {draft[kind].motifs.length} shapes</span></summary>
-                <div className="space-y-3 mt-3">
+                <summary className="text-sm font-semibold cursor-pointer select-none">{kind === 'cover' ? 'Cover' : 'Divider pages'} <span className="font-normal text-gray-400">· {draft.custom[kind] ? 'written by Diana' : `${draft[kind].motifs.length} shapes`}</span></summary>
+                {draft.custom[kind] && (
+                  <div className="mt-3 rounded-lg bg-accent/5 border border-accent/20 p-3 text-xs space-y-2">
+                    <p>Diana wrote this page from scratch. Ask her for changes (e.g. "make the title bigger on the cover"), or switch back to the built-in design below.</p>
+                    <Button type="button" size="sm" variant="outline" onClick={() => edit({ custom: { [kind]: '' } })}>Use the built-in design</Button>
+                  </div>
+                )}
+                <div className={`space-y-3 mt-3 ${draft.custom[kind] ? 'hidden' : ''}`}>
                   <div>
                     <Label>Background</Label>
                     <div className="flex gap-1.5">
@@ -254,6 +261,10 @@ export const DesignDialog: React.FC<{ open: boolean; onClose: () => void; series
                   <div className="grid grid-cols-2 gap-2">
                     <Select id={`d-${kind}-layout`} label="Title position" value={draft[kind].layout} options={[['top', 'Top'], ['center', 'Middle'], ['bottom', 'Bottom']]} onChange={(layout) => editSurface(kind, { layout })} />
                     <Select id={`d-${kind}-align`} label="Alignment" value={draft[kind].align} options={[['left', 'Left'], ['center', 'Center'], ['right', 'Right']]} onChange={(align) => editSurface(kind, { align })} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select id={`d-${kind}-dir`} label="Title direction" value={draft[kind].titleDirection} options={[['across', 'Across'], ['up', 'Vertical (spine)']]} onChange={(titleDirection) => editSurface(kind, { titleDirection })} />
+                    <Select id={`d-${kind}-box`} label="Label box" value={draft[kind].titleBox} options={[['none', 'None'], ['outline', 'Outline'], ['solid', 'Filled']]} onChange={(titleBox) => editSurface(kind, { titleBox })} />
                   </div>
                   <div>
                     <Label htmlFor={`d-${kind}-scale`}>Title size</Label>

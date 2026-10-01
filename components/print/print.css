@@ -66,6 +66,36 @@
 .pr-wordmark[data-side="right"] { right: 0.8in; }
 .pr-wordmark i { width: 14pt; height: 14pt; border-radius: calc(4pt * var(--r)); background: currentColor; display: inline-block; opacity: 0.9; }
 
+/* Cover and divider options: title order (eyebrow above title when across), vertical titles, label boxes. */
+.pr-cover-body, .pr-divider-body { display: flex; flex-direction: column; }
+.pr-cover-body .pr-cover-title { order: 1; }
+.pr-cover-body > .pr-eyebrow { order: 0; }
+.pr-cover-body > .pr-cover-theme, .pr-cover-body > .pr-title-box { order: 2; }
+.pr-cover-body > .pr-cover-foot { order: 3; }
+.pr-cover[data-align="right"] .pr-cover-body { align-items: flex-end; }
+.pr-cover[data-align="center"] .pr-cover-body { align-items: center; }
+.pr-title-box { margin-top: 16pt; padding: 10pt 13pt; border: 1.5pt solid currentColor; border-radius: calc(10pt * var(--r)); max-width: 5.6in; }
+.pr-title-box .pr-eyebrow { opacity: 0.85; }
+.pr-title-box .pr-cover-theme { margin-top: 6pt; font-size: 13pt; }
+.pr-cover[data-box="solid"] .pr-title-box, .pr-divider[data-box="solid"] .pr-title-box { background: color-mix(in srgb, currentColor 12%, transparent); border-color: transparent; }
+.pr-divider .pr-title-box { margin-top: 4pt; }
+/* Vertical title: huge, reading bottom to top, down one side of the page. */
+.pr-cover[data-dir="up"] .pr-cover-body, .pr-divider[data-dir="up"] .pr-divider-body { position: static; }
+.pr-cover[data-dir="up"] .pr-cover-title, .pr-divider[data-dir="up"] h2 {
+  position: absolute; bottom: 0.75in; left: 0.7in; margin: 0; max-height: 9.5in;
+  writing-mode: vertical-rl; transform: rotate(180deg); font-size: var(--vt-size); line-height: 0.92; text-align: left;
+}
+.pr-cover[data-dir="up"][data-align="right"] .pr-cover-title, .pr-divider[data-dir="up"][data-align="right"] h2 { left: auto; right: 0.7in; }
+.pr-cover[data-dir="up"]:not([data-align="right"]) .pr-cover-body { margin-left: var(--vt-room); }
+.pr-cover[data-dir="up"][data-align="right"] .pr-cover-body { margin-right: var(--vt-room); }
+.pr-divider[data-dir="up"]:not([data-align="right"]) .pr-divider-body { margin-left: var(--vt-room); }
+.pr-divider[data-dir="up"][data-align="right"] .pr-divider-body { margin-right: var(--vt-room); }
+
+/* Pages Diana wrote: her root element fills the page; nothing escapes it. */
+.pr-custom { padding: 0 !important; display: block !important; }
+.pr-custom > * { position: relative; width: 8.5in; height: 11in; overflow: hidden; }
+.pr-custom svg { overflow: hidden; }
+
 /* ---------- Series at a glance ---------- */
 .pr-weeks { list-style: none; margin: 0; padding: 0; border-top: 1.5pt solid var(--ink); }
 .pr-weeks li { display: grid; grid-template-columns: 0.75in 1fr 1.35in; gap: 14pt; padding: 12pt 0; border-bottom: 0.75pt solid var(--rule); break-inside: avoid; }
@@ -353,6 +383,7 @@
 .pr-preview > .pr-cover { height: 11in; }
 .pr-preview > .pr-cover[data-layout="top"] { padding-top: 1.5in; }
 .pr-preview > .pr-divider { padding: 0.9in 0.85in; height: 11in; }
+.pr-preview > .pr-custom { padding: 0; }
 /* Where the printer starts a new page inside the lesson, draw a page seam. */
 .pr-preview .pr-flow > .pr-sec + .pr-sec { margin: 0.7in -0.65in 0; padding: 0.6in 0.65in 0; border-top: 20px solid #E9EDF3; }
 .pr-preview [data-part] { cursor: pointer; border-radius: 6px; transition: background 0.15s; }

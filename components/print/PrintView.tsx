@@ -2,6 +2,7 @@ import React from 'react';
 import { DesignSurface, Part, PrintScope, Section, Series, Service } from '../../types';
 import { designAttrs, designOf, designVars, resolvePalette, surfaceText, toneColor } from '../../lib/design';
 import { MotifLayer, PageMark } from './Motifs';
+import { fillCustom } from '../../lib/customPage';
 import { PART_TYPES } from '../../lib/partTypes';
 import { aggregateSupplies, supplyTotal } from '../../lib/supplies';
 import { buildSchedule, formatClock, formatDate, formatDuration, sectionMinutes, serviceMinutes, visibleParts } from '../../lib/time';
@@ -199,40 +200,92 @@ export const DesignPreview: React.FC<{ series: Series; weeks: Service[] }> = ({ 
 // ---------- Series ----------
 
 // Where text sits on a full-bleed page, as page fractions; shapes fade out behind it.
-const textZone = (layout: DesignSurface['layout'], align: DesignSurface['align']) => {
-  const y = layout === 'bottom' ? 0.5 : layout === 'center' ? 0.28 : 0.1;
-  const x = align === 'left' ? 0.06 : align === 'right' ? 0.2 : 0.1;
-  return { x, y, w: align === 'center' ? 0.8 : 0.74, h: 0.44 };
+const textZones = (sf: DesignSurface) => {
+  const y = sf.layout === 'bottom' ? 0.5 : sf.layout === 'center' ? 0.28 : 0.1;
+  const x = sf.align === 'left' ? 0.06 : sf.align === 'right' ? 0.2 : 0.1;
+  const zones = [{ x, y, w: sf.align === 'center' ? 0.8 : 0.74, h: 0.44 }];
+  // A vertical title runs the full height of its side of the page.
+  if (sf.titleDirection === 'up') zones.push({ x: sf.align === 'right' ? 0.66 : 0.04, y: 0.04, w: 0.3, h: 0.92 });
+  return zones;
+};
+
+// A vertical title is sized to fit the page height: one column for short titles, two for long ones.
+// Average letter width per font (in ems), so condensed faces run taller.
+const LETTER_WIDTH: Record<string, number> = { oswald: 0.44, grotesk: 0.6, mono: 0.62, dmserif: 0.52, fraunces: 0.56, nunito: 0.58, inter: 0.58, jakarta: 0.6 };
+const verticalTitle = (title: string, scale: number, font: string) => {
+  const chars = Math.max(4, title.length);
+  const cols = chars > 16 ? 2 : 1;
+  const size = Math.max(40, Math.min(170 * scale, (9.2 * 72 * cols) / (chars * (LETTER_WIDTH[font] ?? 0.6))));
+  return { size, room: size * cols * 1.02 + 18 };
 };
 
 // A full-bleed surface (cover or divider): background, shapes, and the design's text placement.
-const Surface: React.FC<{ kind: 'cover' | 'divider'; series?: Series; uid: string; children: React.ReactNode; corner?: React.ReactNode }> = ({ kind, series, uid, children, corner }) => {
+const Surface: React.FC<{ kind: 'cover' | 'divider'; series?: Series; uid: string; title: string; children: React.ReactNode; corner?: React.ReactNode }> = ({ kind, series, uid, title, children, corner }) => {
   const d = designOf(series);
   const sf = d[kind];
   const p = resolvePalette(d);
   const bg = toneColor(p, sf.background);
   const text = surfaceText(p, sf.background);
+  const vt = sf.titleDirection === 'up' ? verticalTitle(title, sf.titleScale, d.type.display) : null;
   return (
     <section
       className={kind === 'cover' ? 'pr-cover' : 'pr-divider'}
       data-layout={sf.layout}
       data-align={sf.align}
-      style={{ background: bg, color: text, '--title-scale': sf.titleScale } as React.CSSProperties}
+      data-dir={sf.titleDirection}
+      data-box={sf.titleBox}
+      style={{ background: bg, color: text, '--title-scale': sf.titleScale, '--vt-size': vt ? `${vt.size}pt` : undefined, '--vt-room': vt ? `${vt.room}pt` : undefined } as React.CSSProperties}
     >
-      <MotifLayer motifs={sf.motifs} palette={p} bg={bg} textZone={textZone(sf.layout, sf.align)} uid={uid} />
+      <MotifLayer motifs={sf.motifs} palette={p} bg={bg} textZones={textZones(sf)} uid={uid} />
       {corner}
       <div className={kind === 'cover' ? 'pr-cover-body' : 'pr-divider-body'}>{children}</div>
     </section>
   );
 };
 
+// A page Diana wrote as HTML/SVG (already cleaned), with the series' text filled in.
+const CustomPage: React.FC<{ kind: 'cover' | 'divider'; series?: Series; values: Record<string, string> }> = ({ kind, series, values }) => {
+  const p = resolvePalette(designOf(series));
+  return (
+    <section
+      className={`${kind === 'cover' ? 'pr-cover' : 'pr-divider'} pr-custom`}
+      style={{ background: p.deep, color: '#FFFFFF' }}
+      dangerouslySetInnerHTML={{ __html: fillCustom(designOf(series).custom[kind], values) }}
+    />
+  );
+};
+
 const SeriesCover: React.FC<{ series: Series; weeks: Service[] }> = ({ series, weeks }) => {
   const sf = designOf(series).cover;
+  if (designOf(series).custom.cover) {
+    return (
+      <CustomPage
+        kind="cover"
+        series={series}
+        values={{
+          title: series.title,
+          subtitle: series.bigIdea || series.description,
+          eyebrow: `${weeks.length}-week series · ${series.audience}`,
+          dates: weeks.length ? `${formatDate(weeks[0].date)} – ${formatDate(weeks[weeks.length - 1].date)}` : '',
+          weeks: pad2(weeks.length),
+          audience: series.audience,
+          verse: series.memoryVerse,
+        }}
+      />
+    );
+  }
+  const label = (
+    <>
+      <p className="pr-eyebrow">{weeks.length}-week series · {series.audience}</p>
+      {(series.bigIdea || series.description) && <p className="pr-cover-theme pr-serif">{series.bigIdea || series.description}</p>}
+    </>
+  );
   return (
     <Surface
       kind="cover"
       series={series}
       uid={`cover-${series.id}`}
+      title={series.title}
       corner={
         <>
           <div className="pr-wordmark" data-side={sf.align === 'right' ? 'right' : 'left'}><i /> Parable</div>
@@ -240,9 +293,8 @@ const SeriesCover: React.FC<{ series: Series; weeks: Service[] }> = ({ series, w
         </>
       }
     >
-      <p className="pr-eyebrow">{weeks.length}-week series · {series.audience}</p>
       <h1 className="pr-cover-title">{series.title}</h1>
-      {(series.bigIdea || series.description) && <p className="pr-cover-theme pr-serif">{series.bigIdea || series.description}</p>}
+      {sf.titleBox === 'none' ? label : <div className="pr-title-box">{label}</div>}
       <div className="pr-cover-foot">
         <div className="pr-cover-meta">
           {weeks.length > 0 && <div><span>Dates</span><b>{formatDate(weeks[0].date)} – {formatDate(weeks[weeks.length - 1].date)}</b></div>}
@@ -255,15 +307,26 @@ const SeriesCover: React.FC<{ series: Series; weeks: Service[] }> = ({ series, w
 };
 
 // Full-bleed section opener, like a chapter page.
-const Divider: React.FC<{ series?: Series; uid: string; icon: React.ElementType; kicker: string; title: string; sub?: string; idea?: string }> = ({ series, uid, icon: Icon, kicker, title, sub, idea }) => (
-  <Surface kind="divider" series={series} uid={uid}>
-    <span className="pr-divider-icon"><Icon /></span>
-    <p className="pr-eyebrow">{kicker}</p>
-    <h2>{title}</h2>
-    {sub && <p className="pr-divider-sub">{sub}</p>}
-    {idea && <p className="pr-divider-idea pr-serif">{idea}</p>}
-  </Surface>
-);
+const Divider: React.FC<{ series?: Series; uid: string; icon: React.ElementType; kicker: string; title: string; sub?: string; idea?: string }> = ({ series, uid, icon: Icon, kicker, title, sub, idea }) => {
+  const box = designOf(series).divider.titleBox;
+  if (designOf(series).custom.divider) {
+    return <CustomPage kind="divider" series={series} values={{ title, subtitle: sub ?? '', kicker, eyebrow: kicker, idea: idea ?? '' }} />;
+  }
+  const label = (
+    <>
+      <p className="pr-eyebrow">{kicker}</p>
+      {sub && <p className="pr-divider-sub">{sub}</p>}
+    </>
+  );
+  return (
+    <Surface kind="divider" series={series} uid={uid} title={title}>
+      <span className="pr-divider-icon"><Icon /></span>
+      <h2>{title}</h2>
+      {box === 'none' ? label : <div className="pr-title-box">{label}</div>}
+      {idea && <p className="pr-divider-idea pr-serif">{idea}</p>}
+    </Surface>
+  );
+};
 
 const LEGEND: [React.ElementType, string, string][] = [
   [Target, 'Session aim', 'the one idea everything points to'],

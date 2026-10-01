@@ -88,6 +88,8 @@ export interface DesignSurface {
   layout: 'bottom' | 'center' | 'top';
   align: 'left' | 'center' | 'right';
   titleScale: number; // 0.7–1.4
+  titleDirection: 'across' | 'up'; // 'up' sets the title huge and vertical, reading bottom to top, like a book spine
+  titleBox: 'none' | 'outline' | 'solid'; // a label box around the small text (eyebrow, theme)
   showCount: boolean; // the big "05 weeks" number on the cover
   motifs: Motif[];
 }
@@ -108,6 +110,8 @@ export interface BookDesign {
   components: { questions: 'numbers' | 'boxed'; scripture: 'panel' | 'rule' };
   cover: DesignSurface;
   divider: DesignSurface;
+  // Pages Diana wrote as HTML + inline SVG (cleaned by lib/customPage.ts). When set, they replace the built-in cover / dividers.
+  custom: { cover: string; divider: string };
 }
 
 type DeepPartial<T> = { [K in keyof T]?: T[K] extends (infer U)[] ? Partial<U>[] : T[K] extends object ? DeepPartial<T[K]> : T[K] };

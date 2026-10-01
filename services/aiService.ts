@@ -1,8 +1,9 @@
 import { BookDesign, BookDesignPatch, FamilyCues, Part, Section, Series, Service, Supply } from '../types';
-import { applyPatch, describeDesign } from '../lib/design';
+import { applyPatch, describeDesign, resolvePalette } from '../lib/design';
+import { extractHtml, sanitizeCustom } from '../lib/customPage';
 import { newPart, newSection, newSeries, newService, newSupply } from '../lib/factory';
 import { PART_TYPE_KEYS, PART_TYPES } from '../lib/partTypes';
-import { AISettings, serverKind, serverOrigin } from './aiSettings';
+import { AISettings, cleanBaseUrl, serverKind, serverOrigin } from './aiSettings';
 
 interface ChatMessage {
   role: 'system' | 'user';
@@ -11,7 +12,7 @@ interface ChatMessage {
 
 const SYSTEM = "You are an experienced children's and youth ministry curriculum writer. You prioritize literary context, historical background, and Jesus-centered theology, and you write engaging, age-appropriate content that a volunteer leader can read and use directly. Avoid Christian jargon where possible; use fresh language.";
 
-const endpoint = (settings: AISettings, path: string) => `${settings.baseUrl.replace(/\/+$/, '')}${path}`;
+const endpoint = (settings: AISettings, path: string) => `${cleanBaseUrl(settings.baseUrl)}${path}`;
 
 const headers = (settings: AISettings) => {
   const h: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -433,7 +434,7 @@ Fields and allowed values:
 - page.corners: round | soft | square.   page.headerRule (line under page titles): ink | accent | heavy.
 - page.mark (a tiny symbol on lesson page headers): none | x | ring | arrow | crosshair | barcode | dot.
 - components.questions: numbers | boxed.   components.scripture: panel | rule.
-- cover and divider pages: background (paper | ink | accent | secondary | muted | deep), layout (bottom | center | top), align (left | center | right), titleScale (0.7 to 1.4), showCount (true/false, cover only), motifs (list of shapes).
+- cover and divider pages: background (paper | ink | accent | secondary | muted | deep), layout (bottom | center | top), align (left | center | right), titleScale (0.7 to 1.4), titleDirection (across | up; up = huge vertical title reading bottom to top like a book spine), titleBox (none | outline | solid; a label box around the small text), showCount (true/false, cover only), motifs (list of shapes).
 - A motif: {"type": band|circle|ring|x|track|line|frame|arrow|grid|barcode|stripes|crosshair|label, "x": 0 to 1 (0 = left edge, 1 = right edge), "y": 0 to 1 (0 = top, 1 = bottom), "size": fraction of the page width, "aspect": width divided by height (for frame, grid, stripes, barcode, track), "rotation": degrees, "tone": paper|ink|accent|secondary|muted|deep, "style": solid|outline, "opacity": 0.05 to 1, "count": rings in a ring / bars in a barcode / cells in a grid, "text": short text for a label}.
   band = a long strip across the page (size = thickness); track = a rounded pill/rail shape; stripes = a box of thin diagonal lines; x = a bold X mark.
   Shapes may run past the page edges. Parable keeps the title area readable automatically.
@@ -450,26 +451,134 @@ export interface DesignProposal {
   note: string;
 }
 
+const parsePatch = (text: string) => {
+  const result = parseJsonLoose<Record<string, unknown>>(text);
+  // Small models sometimes skip the wrapper and return the patch itself.
+  const { note, patch: wrapped, ...rest } = result;
+  return { patch: (wrapped && typeof wrapped === 'object' ? wrapped : rest) as Record<string, unknown>, note: typeof note === 'string' ? note : '' };
+};
+
+const SURFACE_GUIDE = `Fields for one full-bleed page (the cover or a divider):
+{"background": paper|ink|accent|secondary|muted|deep, "layout": bottom|center|top, "align": left|center|right, "titleScale": 0.7 to 1.4,
+ "titleDirection": across|up (up = huge vertical title reading bottom to top, like a book spine), "titleBox": none|outline|solid (a label box around the small text), "showCount": true|false,
+ "motifs": [ {"type": band|circle|ring|x|track|line|frame|arrow|grid|barcode|stripes|crosshair|label, "x": 0-1 (0 left, 1 right), "y": 0-1 (0 top, 1 bottom), "size": fraction of page width, "aspect": width/height, "rotation": degrees, "tone": paper|ink|accent|secondary|muted|deep, "style": solid|outline, "opacity": 0.05-1, "count": number, "text": "short label"} ]}
+band = a long strip through (x,y), size = its thickness, rotation 90 makes it vertical (a band at x 0.01, size 0.05, rotation 90 is a colored spine down the left edge); track = rounded pill; stripes = a box of diagonal lines; frame = rectangle outline; label = small technical text.
+Shapes may run past the page edges; Parable keeps the title readable. Use 3 to 10 shapes.`;
+
 export const designPatch = async (
   settings: AISettings,
   current: BookDesign,
   instruction: string,
   reference?: { image: string; colors: string[] },
+  onProgress: (message: string) => void = () => {},
 ): Promise<DesignProposal> => {
-  const text = await chat(settings, [
+  const ask = instruction || 'Make the book feel like this reference.';
+
+  // Without a picture, a request about a page Diana wrote revises that page's code.
+  if (!reference) {
+    const page = /cover/i.test(ask) ? 'cover' : /divider|week page|chapter/i.test(ask) ? 'divider' : null;
+    if (page && current.custom[page]) {
+      onProgress(`Diana is rewriting the ${page === 'cover' ? 'cover' : 'divider pages'}…`);
+      const html = await writePage(settings, page, current, ask, { revise: current.custom[page] });
+      if (!html) throw new Error(`Diana's new ${page} code didn't come out usable. Try asking again, a little more simply.`);
+      return { design: applyPatch(current, { custom: { [page]: html } } as BookDesignPatch), patch: { custom: { [page]: html } } as BookDesignPatch, note: `I rewrote the ${page === 'cover' ? 'cover' : 'divider pages'}: ${ask}` };
+    }
+  }
+
+  // Without a picture: one focused call that changes only what was asked.
+  if (!reference) {
+    onProgress('Diana is updating the design…');
+    const { patch, note } = parsePatch(await chat(settings, [
+      { role: 'system', content: DESIGN_GUIDE },
+      { role: 'user', content: `Current design: ${describeDesign(current)}\n\nThe leader says: "${ask}"` },
+    ], true));
+    return { design: applyPatch(current, patch), patch, note: note || 'Here is a new version. Preview it and apply it if you like it.' };
+  }
+
+  // With a picture, small steps work far better for a small model: study it once, then design the
+  // whole book's look, the cover, and the dividers in separate focused requests.
+  onProgress('Diana is studying the picture…');
+  const study = await chat(settings, [
+    {
+      role: 'user',
+      content: `You are a graphic designer. Study this picture as a style reference for a printed book cover. Respond with JSON only:
+{"background":"main background color #RRGGBB","ink":"main text color","accent":"strongest accent color","secondary":"another important color",
+ "headline":"describe the headline type (e.g. heavy condensed caps, elegant serif)","labels":"describe small text (e.g. monospace, tiny caps)",
+ "title":{"direction":"across or up (up = vertical, reading bottom to top)","position":"top, center or bottom","align":"left, center or right","size":"small, medium or huge"},
+ "labelBox":"none, outline or solid (is small text inside a box?)",
+ "shapes":[{"kind":"what it is","where":"where on the page","color":"which color"}],
+ "mood":"a few words","lessonPages":"how this style should carry into calm, readable lesson pages"}
+Colors measured from the picture, most common first: ${reference.colors.join(', ')}.`,
+    },
+  ], true, [reference.image]);
+  const analysis = JSON.stringify(parseJsonLoose<Record<string, unknown>>(study));
+
+  onProgress('Diana is choosing colors and type…');
+  const look = parsePatch(await chat(settings, [
     { role: 'system', content: DESIGN_GUIDE },
     {
       role: 'user',
-      content: [
-        `Current design: ${describeDesign(current)}`,
-        reference && `The attached image is a style reference. Translate its visual language (color, type character, shapes, composition, density) into this book. Do not copy its words. Colors measured from the image, most common first: ${reference.colors.join(', ')}.`,
-        `The leader says: "${instruction || 'Make the book feel like this reference.'}"`,
-      ].filter(Boolean).join('\n\n'),
+      content: `Current design: ${describeDesign(current)}\n\nReference picture, as studied: ${analysis}\n\nThe leader says: "${ask}"\n\nIn this step change ONLY palette, type, page and components so the whole book matches the reference while lesson pages stay readable. Do not include cover or divider. Respond {"patch": {...}, "note": "..."}.`,
     },
-  ], true, reference ? [reference.image] : []);
-  const result = parseJsonLoose<Record<string, unknown>>(text);
-  // Small models sometimes skip the wrapper and return the patch itself.
-  const { note, patch: wrapped, ...rest } = result;
-  const patch = (wrapped && typeof wrapped === 'object' ? wrapped : rest) as BookDesignPatch;
-  return { design: applyPatch(current, patch), patch, note: typeof note === 'string' ? note : 'Here is a new version. Preview it and apply it if you like it.' };
+  ], true));
+  let design = applyPatch(current, { palette: look.patch.palette, type: look.patch.type, page: look.patch.page, components: look.patch.components } as BookDesignPatch);
+
+  onProgress('Diana is writing the cover…');
+  const cover = await writePage(settings, 'cover', design, ask, { image: reference.image, analysis });
+  onProgress('Diana is writing the divider pages…');
+  const divider = await writePage(settings, 'divider', design, ask, { image: reference.image, analysis, cover });
+  design = applyPatch(design, { custom: { cover, divider } } as BookDesignPatch);
+
+  const patch = { ...look.patch, custom: { cover, divider } } as BookDesignPatch;
+  const missing = [!cover && 'cover', !divider && 'divider pages'].filter(Boolean).join(' and ');
+  return {
+    design,
+    patch,
+    note: (look.note || 'I matched the reference across the book.') + (missing ? ` I couldn't write usable code for the ${missing}, so ${missing === 'cover' ? 'it keeps' : 'they keep'} the built-in design. Try asking again.` : ' I wrote a new cover and divider pages to match.'),
+  };
+};
+
+// ---------- Diana writes cover and divider pages as code ----------
+
+const PAGE_FONTS = "'Oswald Variable' (tall condensed), 'Space Grotesk Variable' (geometric), 'Plus Jakarta Sans Variable' (modern), 'Inter Variable' (neutral), 'IBM Plex Mono' (technical mono), 'Fraunces Variable' (classic serif), 'DM Serif Display' (editorial serif), 'Nunito Variable' (rounded)";
+
+const PAGE_TEXT = {
+  cover: '{{title}} = the series title (make it the boldest, biggest text), {{subtitle}} = a one-sentence theme, {{eyebrow}} = a short label like "5-week series · Students", {{dates}} = the date range, {{weeks}} = the number of weeks like "05"',
+  divider: '{{title}} = the big page title like "Week 1" or "Leader guide", {{subtitle}} = the lesson name, {{kicker}} = a short label like "B.L.E.S.S. · Sun, Oct 4", {{idea}} = the one-sentence big idea',
+};
+
+const writePage = async (
+  settings: AISettings,
+  kind: 'cover' | 'divider',
+  design: BookDesign,
+  ask: string,
+  opts: { image?: string; analysis?: string; cover?: string; revise?: string },
+): Promise<string> => {
+  const p = resolvePalette(design);
+  const what = kind === 'cover' ? 'the COVER of a printed church curriculum book' : 'a DIVIDER page that opens each week of a printed church curriculum book (a calmer companion to the cover)';
+  const prompt = [
+    opts.revise
+      ? `Here is the current HTML for ${what}. Change it as the leader asks, keeping everything else:\n${opts.revise}`
+      : opts.image
+        ? `Recreate the STYLE of the attached reference picture as ${what}. Match its layout, shapes, type character and colors closely, but do not copy its words, logos or brand names.`
+        : `Design ${what}.`,
+    opts.analysis && `Notes on the reference: ${opts.analysis}`,
+    opts.cover && `This is the cover you already wrote; the divider should clearly belong with it:\n${opts.cover.slice(0, 6000)}`,
+    `The leader says: "${ask}"`,
+    `Write it as HTML with inline styles and inline SVG. The page is exactly 8.5in wide and 11in tall. Return ONE root element:
+<div style="position:relative;width:8.5in;height:11in;overflow:hidden;background:#RRGGBB;"> … </div>
+- Place text with absolutely positioned <div>, <p> or <h1> elements and inline style="" (units in or pt).
+- Draw shapes with one <svg viewBox="0 0 850 1100" style="position:absolute;left:0;top:0;width:8.5in;height:11in"> covering the page (850 × 1100 units = the page), using rect, circle, line, path, polygon, text, pattern and gradients.
+- Use these placeholders where the text goes: ${PAGE_TEXT[kind]}.
+- Fonts you may use (font-family): ${PAGE_FONTS}.
+- Book colors: paper ${p.paper}, ink ${p.ink}, accent ${p.accent}, secondary ${p.secondary}, dark ${p.deep}. Use the reference's colors where they differ.
+- Keep text at least 0.5in from the edges and make the title easy to read. Long titles must wrap or shrink to fit.
+- No images, links, scripts or outside files.
+Respond with only the HTML.`,
+  ].filter(Boolean).join('\n\n');
+  const reply = await chat(settings, [
+    { role: 'system', content: 'You are Diana, a graphic designer who writes clean HTML and inline SVG for printed pages.' },
+    { role: 'user', content: prompt },
+  ], false, opts.image ? [opts.image] : []);
+  return sanitizeCustom(extractHtml(reply));
 };

@@ -1,4 +1,5 @@
 import type React from 'react';
+import { sanitizeCustom } from './customPage';
 import { BookDesign, BookDesignPatch, DesignSurface, DesignTone, Motif, MotifType, Series, SeriesColor } from '../types';
 
 // ---------- The design language ----------
@@ -116,7 +117,7 @@ const ORB_DIVIDER: Motif[] = [
 ];
 
 const surface = (s: Partial<DesignSurface>): DesignSurface => ({
-  background: 'deep', layout: 'bottom', align: 'left', titleScale: 1, showCount: true, motifs: [], ...s,
+  background: 'deep', layout: 'bottom', align: 'left', titleScale: 1, titleDirection: 'across', titleBox: 'none', showCount: true, motifs: [], ...s,
 });
 
 export const DEFAULT_DESIGN: BookDesign = {
@@ -126,6 +127,7 @@ export const DEFAULT_DESIGN: BookDesign = {
   components: { questions: 'numbers', scripture: 'panel' },
   cover: surface({ motifs: ORB_COVER }),
   divider: surface({ layout: 'center', align: 'center', showCount: false, motifs: ORB_DIVIDER }),
+  custom: { cover: '', divider: '' },
 };
 
 // ---------- Normalizing (the safety layer) ----------
@@ -176,6 +178,8 @@ const normalizeSurface = (v: unknown, base: DesignSurface): DesignSurface => {
     layout: pick(o.layout, ['bottom', 'center', 'top'] as const, base.layout),
     align: pick(o.align, ['left', 'center', 'right'] as const, base.align),
     titleScale: num(o.titleScale, 0.7, 1.4, base.titleScale),
+    titleDirection: pick(o.titleDirection, ['across', 'up'] as const, base.titleDirection ?? 'across'),
+    titleBox: pick(o.titleBox, ['none', 'outline', 'solid'] as const, base.titleBox ?? 'none'),
     showCount: typeof o.showCount === 'boolean' ? o.showCount : base.showCount,
     motifs,
   };
@@ -215,6 +219,10 @@ export const normalizeDesign = (v: unknown, base: BookDesign = DEFAULT_DESIGN): 
     },
     cover: normalizeSurface(o.cover, base.cover),
     divider: normalizeSurface(o.divider, base.divider),
+    custom: {
+      cover: 'cover' in obj(o.custom) ? sanitizeCustom(obj(o.custom).cover) : base.custom?.cover ?? '',
+      divider: 'divider' in obj(o.custom) ? sanitizeCustom(obj(o.custom).divider) : base.custom?.divider ?? '',
+    },
   };
 };
 
@@ -301,4 +309,5 @@ export const designAttrs = (d: BookDesign) => ({
 });
 
 // The design as compact text for the model: what exists now and what each field can be.
-export const describeDesign = (d: BookDesign) => JSON.stringify(d);
+export const describeDesign = (d: BookDesign) =>
+  JSON.stringify({ ...d, custom: { cover: d.custom.cover ? '(Diana-written page)' : '', divider: d.custom.divider ? '(Diana-written page)' : '' } });

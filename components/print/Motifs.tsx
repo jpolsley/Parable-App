@@ -133,11 +133,11 @@ export const MotifLayer: React.FC<{
   motifs: Motif[];
   palette: Palette;
   bg: string;
-  textZone: { x: number; y: number; w: number; h: number };
+  textZones: { x: number; y: number; w: number; h: number }[];
   uid: string;
-}> = ({ motifs, palette, bg, textZone, uid }) => {
+}> = ({ motifs, palette, bg, textZones, uid }) => {
   if (!motifs.length) return null;
-  const z = { x: textZone.x * W, y: textZone.y * H, w: textZone.w * W, h: textZone.h * H };
+  const zones = textZones.map((t) => ({ x: t.x * W, y: t.y * H, w: t.w * W, h: t.h * H }));
   const shapes = (prefix: string) => motifs.map((m, i) => (
     <g key={i} opacity={m.opacity}>
       <Shape m={m} p={palette} bg={bg} id={`${uid}-${prefix}-${i}`} />
@@ -150,10 +150,10 @@ export const MotifLayer: React.FC<{
         <filter id={`${uid}-soft`} x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="28" /></filter>
         <mask id={`${uid}-outside`}>
           <rect width={W} height={H} fill="white" />
-          <rect x={z.x} y={z.y} width={z.w} height={z.h} fill="black" filter={`url(#${uid}-soft)`} />
+          {zones.map((z, i) => <rect key={i} x={z.x} y={z.y} width={z.w} height={z.h} fill="black" filter={`url(#${uid}-soft)`} />)}
         </mask>
         <mask id={`${uid}-inside`}>
-          <rect x={z.x} y={z.y} width={z.w} height={z.h} fill="white" filter={`url(#${uid}-soft)`} />
+          {zones.map((z, i) => <rect key={i} x={z.x} y={z.y} width={z.w} height={z.h} fill="white" filter={`url(#${uid}-soft)`} />)}
         </mask>
       </defs>
       <g mask={`url(#${uid}-outside)`}>{shapes('o')}</g>
