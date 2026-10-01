@@ -13,8 +13,8 @@ const PRESETS: { name: string; hint: string; settings: Pick<AISettings, 'baseUrl
   },
   {
     name: 'Ollama directly',
-    hint: 'Qwen 3 (8B) on this computer. Ollama must allow this site (OLLAMA_ORIGINS).',
-    settings: { baseUrl: 'http://localhost:11434/v1', model: 'qwen3:8b', server: 'ollama', apiKey: '' },
+    hint: 'Qwen3-VL 8B Instruct on this computer: writes and can see reference pictures. Ollama must allow this site (OLLAMA_ORIGINS).',
+    settings: { baseUrl: 'http://localhost:11434/v1', model: 'qwen3-vl:8b-instruct', server: 'ollama', apiKey: '' },
   },
 ];
 

@@ -1,5 +1,5 @@
-import { FamilyCues, Part, Section, Series, SeriesDesign, Service, Supply } from '../types';
-import { LOOKS, normalizeDesign } from '../lib/design';
+import { BookDesign, BookDesignPatch, FamilyCues, Part, Section, Series, Service, Supply } from '../types';
+import { applyPatch, describeDesign } from '../lib/design';
 import { newPart, newSection, newSeries, newService, newSupply } from '../lib/factory';
 import { PART_TYPE_KEYS, PART_TYPES } from '../lib/partTypes';
 import { AISettings, serverKind, serverOrigin } from './aiSettings';
@@ -49,7 +49,8 @@ const noThink = (settings: AISettings, messages: ChatMessage[]): ChatMessage[] =
   return messages.map((m, i) => (i === last && m.role === 'user' ? { ...m, content: `${m.content} /no_think` } : m));
 };
 
-const chat = async (settings: AISettings, messages: ChatMessage[], json: boolean): Promise<string> => {
+// images: base64 JPEGs attached to the last user message (for models that can see, like Qwen3-VL).
+const chat = async (settings: AISettings, messages: ChatMessage[], json: boolean, images: string[] = []): Promise<string> => {
   const kind = serverKind(settings);
   // Structured output is steadier from a small model with no sampling randomness.
   const temperature = json ? 0 : 0.7;
@@ -58,9 +59,10 @@ const chat = async (settings: AISettings, messages: ChatMessage[], json: boolean
   if (kind === 'ollama') {
     // Ollama's own endpoint can switch thinking off properly, keep the model loaded, and widen the context.
     const url = `${serverOrigin(settings)}/api/chat`;
+    const last = messages.length - 1;
     const body = {
       model: settings.model,
-      messages,
+      messages: images.length ? messages.map((m, i) => (i === last ? { ...m, images } : m)) : messages,
       stream: false,
       think: false,
       keep_alive: '24h',
@@ -74,9 +76,13 @@ const chat = async (settings: AISettings, messages: ChatMessage[], json: boolean
     text = (await response.json())?.message?.content;
   } else {
     const url = endpoint(settings, '/chat/completions');
+    const plain = kind === 'steward' ? messages : noThink(settings, messages);
     const body = {
       model: settings.model,
-      messages: kind === 'steward' ? messages : noThink(settings, messages),
+      // OpenAI-style servers take images as content parts on the last message.
+      messages: images.length
+        ? plain.map((m, i) => (i === plain.length - 1 ? { role: m.role, content: [{ type: 'text', text: m.content }, ...images.map((b) => ({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${b}` } }))] } : m))
+        : plain,
       temperature,
       stream: false,
       ...(kind === 'steward' ? { use_docs: settings.useDocs } : {}),
@@ -415,21 +421,55 @@ export const draftSeries = async (
   return { series, weeks: services };
 };
 
-// ---------- Design from a description ----------
+// ---------- Diana art-directs the book ----------
 
-// The model only picks from the built-in choices (and a color), so whatever it returns prints well.
-export const designFromDescription = async (settings: AISettings, description: string, series?: Series): Promise<{ design: SeriesDesign; why: string }> => {
-  const result = await chatJson<Record<string, unknown>>(settings, [
-    `A ministry leader describes the look they want for a printed curriculum book: "${description}".`,
-    series && `The series is "${series.title}" for ${series.audience}.${series.description ? ` ${series.description}` : ''}`,
-    'Choose settings from these options only:',
-    `- fonts: ${LOOKS.map((l) => `"${l.design.fonts}" (${l.blurb})`).join('; ')}`,
-    '- corners: "round", "soft", or "square"',
-    '- headings: "normal" or "caps" (all capitals)',
-    '- accent: one main color as a hex code like "#2F6B4F" that fits the description. Prefer rich, medium-dark colors; avoid pale ones.',
-    'Respond as {"fonts":"...","corners":"...","headings":"...","accent":"#RRGGBB","why":"one short sentence explaining the choice"}.',
-  ].filter(Boolean).join('\n'));
-  const design = normalizeDesign(result);
-  if (!design) throw new Error('The AI did not return a design. Try describing it differently.');
-  return { design, why: typeof result.why === 'string' ? result.why : '' };
+const DESIGN_GUIDE = `You are Diana, the art director for a printed church curriculum book made in Parable.
+The book's design is JSON. You change it by returning a PATCH that contains only the fields that should change.
+
+Fields and allowed values:
+- palette: paper (background of lesson pages; must stay light), ink (text), accent (main color), secondary, muted, deep (the dark color for full-bleed pages and dark panels). Colors are "#RRGGBB".
+- type.display (headings): jakarta (modern sans), fraunces (classic serif), dmserif (editorial serif), oswald (tall condensed), nunito (rounded), grotesk (geometric grotesk), inter (neutral sans), mono (technical monospace).
+- type.body (reading text): serif | sans | rounded.   type.label (small labels): sans | mono.   type.headingCase: normal | caps.
+- page.corners: round | soft | square.   page.headerRule (line under page titles): ink | accent | heavy.
+- page.mark (a tiny symbol on lesson page headers): none | x | ring | arrow | crosshair | barcode | dot.
+- components.questions: numbers | boxed.   components.scripture: panel | rule.
+- cover and divider pages: background (paper | ink | accent | secondary | muted | deep), layout (bottom | center | top), align (left | center | right), titleScale (0.7 to 1.4), showCount (true/false, cover only), motifs (list of shapes).
+- A motif: {"type": band|circle|ring|x|track|line|frame|arrow|grid|barcode|stripes|crosshair|label, "x": 0 to 1 (0 = left edge, 1 = right edge), "y": 0 to 1 (0 = top, 1 = bottom), "size": fraction of the page width, "aspect": width divided by height (for frame, grid, stripes, barcode, track), "rotation": degrees, "tone": paper|ink|accent|secondary|muted|deep, "style": solid|outline, "opacity": 0.05 to 1, "count": rings in a ring / bars in a barcode / cells in a grid, "text": short text for a label}.
+  band = a long strip across the page (size = thickness); track = a rounded pill/rail shape; stripes = a box of thin diagonal lines; x = a bold X mark.
+  Shapes may run past the page edges. Parable keeps the title area readable automatically.
+
+Rules:
+- Change only what the leader asked for. Do not repeat fields that stay the same.
+- To change shapes on the cover or dividers, return the COMPLETE new motifs list for that page, keeping shapes you were not asked to change.
+- Lesson pages must stay calm and easy to read: carry a style there through palette, fonts, header rule, page mark and component styles, never big shapes.
+- Respond with JSON only: {"patch": { ...only changed fields... }, "note": "one or two friendly sentences telling the leader what you changed"}`;
+
+export interface DesignProposal {
+  design: BookDesign;
+  patch: BookDesignPatch;
+  note: string;
+}
+
+export const designPatch = async (
+  settings: AISettings,
+  current: BookDesign,
+  instruction: string,
+  reference?: { image: string; colors: string[] },
+): Promise<DesignProposal> => {
+  const text = await chat(settings, [
+    { role: 'system', content: DESIGN_GUIDE },
+    {
+      role: 'user',
+      content: [
+        `Current design: ${describeDesign(current)}`,
+        reference && `The attached image is a style reference. Translate its visual language (color, type character, shapes, composition, density) into this book. Do not copy its words. Colors measured from the image, most common first: ${reference.colors.join(', ')}.`,
+        `The leader says: "${instruction || 'Make the book feel like this reference.'}"`,
+      ].filter(Boolean).join('\n\n'),
+    },
+  ], true, reference ? [reference.image] : []);
+  const result = parseJsonLoose<Record<string, unknown>>(text);
+  // Small models sometimes skip the wrapper and return the patch itself.
+  const { note, patch: wrapped, ...rest } = result;
+  const patch = (wrapped && typeof wrapped === 'object' ? wrapped : rest) as BookDesignPatch;
+  return { design: applyPatch(current, patch), patch, note: typeof note === 'string' ? note : 'Here is a new version. Preview it and apply it if you like it.' };
 };

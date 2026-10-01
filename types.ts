@@ -60,12 +60,66 @@ export interface Section {
 
 export type SeriesColor = 'indigo' | 'sky' | 'emerald' | 'amber' | 'rose' | 'violet' | 'slate';
 
-// How a series looks in print. Kept to a fixed set of choices so every combination prints well.
-export interface SeriesDesign {
-  fonts: 'modern' | 'classic' | 'editorial' | 'camp' | 'friendly' | 'bold';
-  corners: 'round' | 'soft' | 'square';
-  headings: 'normal' | 'caps';
-  accent: string; // #RRGGBB, or '' to use the series color
+// ---------- Book design ----------
+// How a series looks in print, as data. The renderer reads it; Diana edits it with small patches;
+// lib/design.ts fills every missing field with a default and clamps anything out of range.
+
+export type DesignTone = 'paper' | 'ink' | 'accent' | 'secondary' | 'muted' | 'deep';
+export type MotifType = 'band' | 'circle' | 'ring' | 'x' | 'track' | 'line' | 'frame' | 'arrow' | 'grid' | 'barcode' | 'stripes' | 'crosshair' | 'label';
+
+// One shape on a cover or divider. Positions and sizes are fractions of the page:
+// x 0 = left edge, 1 = right edge; y 0 = top, 1 = bottom; size is a fraction of the page width.
+export interface Motif {
+  type: MotifType;
+  x: number;
+  y: number;
+  size: number;
+  aspect: number; // width ÷ height for bands, tracks, frames, grids, stripes, barcodes
+  rotation: number; // degrees
+  tone: DesignTone;
+  style: 'solid' | 'outline';
+  opacity: number; // 0.05–1
+  count: number; // rings in a ring, bars in a barcode, lines in a grid
+  text: string; // label motifs only
+}
+
+export interface DesignSurface {
+  background: DesignTone;
+  layout: 'bottom' | 'center' | 'top';
+  align: 'left' | 'center' | 'right';
+  titleScale: number; // 0.7–1.4
+  showCount: boolean; // the big "05 weeks" number on the cover
+  motifs: Motif[];
+}
+
+export interface BookDesign {
+  palette: { paper: string; ink: string; accent: string; secondary: string; muted: string; deep: string }; // deep '' = derived from accent
+  type: {
+    display: 'jakarta' | 'fraunces' | 'dmserif' | 'oswald' | 'nunito' | 'grotesk' | 'inter' | 'mono';
+    body: 'serif' | 'sans' | 'rounded';
+    label: 'sans' | 'mono';
+    headingCase: 'normal' | 'caps';
+  };
+  page: {
+    corners: 'round' | 'soft' | 'square';
+    headerRule: 'ink' | 'accent' | 'heavy';
+    mark: 'none' | 'x' | 'ring' | 'arrow' | 'crosshair' | 'barcode' | 'dot';
+  };
+  components: { questions: 'numbers' | 'boxed'; scripture: 'panel' | 'rule' };
+  cover: DesignSurface;
+  divider: DesignSurface;
+}
+
+type DeepPartial<T> = { [K in keyof T]?: T[K] extends (infer U)[] ? Partial<U>[] : T[K] extends object ? DeepPartial<T[K]> : T[K] };
+export type BookDesignPatch = DeepPartial<BookDesign>;
+
+export interface DesignRevision {
+  id: string;
+  createdAt: number;
+  source: 'manual' | 'diana' | 'look' | 'reference-image';
+  prompt?: string;
+  note?: string;
+  design: BookDesign;
 }
 
 export interface Series {
@@ -78,7 +132,8 @@ export interface Series {
   bigIdea: string;
   memoryVerse: string;
   leaderGuide: string; // welcome letter for the "Start here" page of the printed book
-  design?: SeriesDesign; // missing means the default look
+  design?: BookDesign; // missing means the default look
+  designHistory?: DesignRevision[]; // newest first, kept short
   createdAt: number;
   updatedAt: number;
 }

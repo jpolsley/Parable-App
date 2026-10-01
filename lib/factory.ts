@@ -1,4 +1,4 @@
-import { FamilyCues, LinkItem, Part, PartType, Section, SectionRole, Series, SeriesColor, Service, Supply, SupplyPer } from '../types';
+import { DesignRevision, FamilyCues, LinkItem, Part, PartType, Section, SectionRole, Series, SeriesColor, Service, Supply, SupplyPer } from '../types';
 import { PART_TYPE_KEYS } from './partTypes';
 import { normalizeDesign } from './design';
 
@@ -123,7 +123,10 @@ export const newSeries = (s: Partial<Record<keyof Series, unknown>> = {}): Serie
     bigIdea: str(s.bigIdea),
     memoryVerse: str(s.memoryVerse),
     leaderGuide: str(s.leaderGuide),
-    design: normalizeDesign(s.design),
+    design: s.design ? normalizeDesign(s.design) : undefined,
+    designHistory: Array.isArray(s.designHistory)
+      ? s.designHistory.slice(0, 20).filter((r) => r && typeof r === 'object').map((r) => ({ ...(r as DesignRevision), design: normalizeDesign((r as DesignRevision).design) }))
+      : undefined,
     createdAt: num(s.createdAt, now),
     updatedAt: num(s.updatedAt, now),
   };
