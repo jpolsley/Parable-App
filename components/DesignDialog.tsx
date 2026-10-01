@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Check, History, ImagePlus, Palette, RotateCcw, Sparkles, X } from 'lucide-react';
+import { Check, History, LayoutTemplate, Palette, RotateCcw, Sparkles, Trash2, Upload, X } from 'lucide-react';
 import { BookDesign, DesignRevision, DesignSurface, DesignTone, Series, Service } from '../types';
 import { BODY_FONTS, DISPLAY_FONTS, LABEL_FONTS, LOOKS, TONES, applyPatch, designOf, fontName, resolvePalette, toneColor } from '../lib/design';
 import { uid } from '../lib/factory';
-import { ImageReference, readReference } from '../lib/imageRef';
+import { applyLayout, readLayout, removeLayout } from '../lib/layouts';
+import { readJsonFile } from '../lib/files';
 import { designPatch } from '../services/aiService';
 import { useStore } from '../store/StoreContext';
 import { DesignPreview } from './print/PrintView';
@@ -45,17 +46,15 @@ const PALETTE_FIELDS: [keyof BookDesign['palette'], string][] = [['paper', 'Pape
 
 const when = (t: number) => new Date(t).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
-// Design a series' printed book: ask Diana (with an optional reference picture), start from a look,
+// Design a series' printed book: apply a layout file, ask Diana for changes, start from a look,
 // or adjust anything by hand. Changes preview live and save with history on "Apply".
 export const DesignDialog: React.FC<{ open: boolean; onClose: () => void; series: Series; weeks: Service[] }> = ({ open, onClose, series, weeks }) => {
-  const { updateSeries, aiSettings, toast } = useStore();
+  const { db, updateSeries, aiSettings, toast, addLayout, deleteLayout } = useStore();
   const saved = designOf(series);
   const [draft, setDraft] = useState<BookDesign>(saved);
   const [pending, setPending] = useState<Omit<DesignRevision, 'id' | 'createdAt' | 'design'>>({ source: 'manual' });
   const [ask, setAsk] = useState('');
-  const [reference, setReference] = useState<ImageReference | null>(null);
   const [thinking, setThinking] = useState(false);
-  const [progress, setProgress] = useState('');
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
   const [showCurrent, setShowCurrent] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -81,23 +80,27 @@ export const DesignDialog: React.FC<{ open: boolean; onClose: () => void; series
   const editSurface = (kind: 'cover' | 'divider', patch: Partial<DesignSurface>) => edit({ [kind]: patch });
   const pal = resolvePalette(draft);
 
-  const attach = async (file: File) => {
+  // A layout file made outside Parable (e.g. with Claude): kept in the library, then applied to this book.
+  const importLayout = async (file: File) => {
     try {
-      setReference(await readReference(file));
-      setNote(null);
+      const pack = readLayout(await readJsonFile(file));
+      addLayout(pack);
+      setDraft((d) => applyLayout(d, pack));
+      setPending({ source: 'look', note: `${pack.name} layout` });
+      setNote({ ok: true, text: `Added "${pack.name}" to your layouts and previewed it. Apply it to keep it.` });
     } catch (e) {
-      setNote({ ok: false, text: e instanceof Error ? e.message : "That picture couldn't be read." });
+      setNote({ ok: false, text: e instanceof Error ? e.message : "That file couldn't be read as a layout." });
     }
   };
 
   const askDiana = async () => {
-    if (!ask.trim() && !reference) return;
+    if (!ask.trim()) return;
     setThinking(true);
     setNote(null);
     try {
-      const result = await designPatch(aiSettings, draft, ask.trim(), reference ? { image: reference.image, colors: reference.colors } : undefined, setProgress);
+      const result = await designPatch(aiSettings, draft, ask.trim());
       setDraft(result.design);
-      setPending({ source: reference ? 'reference-image' : 'diana', prompt: ask.trim() || 'Match the reference picture', note: result.note });
+      setPending({ source: 'diana', prompt: ask.trim(), note: result.note });
       setNote({ ok: true, text: result.note });
       setShowCurrent(false);
     } catch (e) {
@@ -119,7 +122,6 @@ export const DesignDialog: React.FC<{ open: boolean; onClose: () => void; series
     toast('Design applied');
     setPending({ source: 'manual' });
     setAsk('');
-    setReference(null);
   };
 
   const restore = (rev: DesignRevision) => {
@@ -146,37 +148,55 @@ export const DesignDialog: React.FC<{ open: boolean; onClose: () => void; series
           <div className="px-5 pb-5 overflow-y-auto space-y-5 flex-1">
             <p className="text-sm text-gray-500">How <b className="text-ink">{series.title}</b> looks in print, on every page of the book.</p>
 
-            {aiSettings.enabled ? (
+            <div className="rounded-xl border border-line p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label>Layouts</Label>
+                <Button type="button" size="sm" variant="ghost" icon={Upload} onClick={() => fileRef.current?.click()}>Import layout file</Button>
+                <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importLayout(f); e.target.value = ''; }} />
+              </div>
+              {(db.layouts ?? []).length === 0 ? (
+                <p className="text-xs text-gray-500">A layout file is a complete book design in code: cover, divider pages and page styles. Make one with Claude from any picture, then import it here.</p>
+              ) : (
+                <ul className="space-y-1">
+                  {(db.layouts ?? []).map((l) => {
+                    const active = draft.custom.name === l.name;
+                    return (
+                      <li key={l.id} className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 ${active ? 'border-accent ring-2 ring-accent/20' : 'border-line'}`}>
+                        <LayoutTemplate className="w-4 h-4 text-gray-400 shrink-0" />
+                        <button type="button" className="flex-1 min-w-0 text-left" title={l.description} onClick={() => { setDraft((d) => applyLayout(d, l)); setPending({ source: 'look', note: `${l.name} layout` }); setNote(null); }}>
+                          <span className="block text-sm font-semibold truncate">{l.name}</span>
+                          {l.description && <span className="block text-[11px] text-gray-500 truncate">{l.description}</span>}
+                        </button>
+                        {active && <Check className="w-4 h-4 text-accent shrink-0" />}
+                        <IconButton icon={Trash2} label={`Remove ${l.name} from your layouts`} onClick={() => deleteLayout(l.id)} />
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              {draft.custom.name && (
+                <Button type="button" size="sm" variant="outline" onClick={() => { setDraft((d) => removeLayout(d)); setPending({ source: 'manual', note: 'Removed the layout' }); }}>
+                  Stop using “{draft.custom.name}”
+                </Button>
+              )}
+            </div>
+
+            {aiSettings.enabled && (
               <div className="rounded-xl border border-accent/30 bg-accent/5 p-3 space-y-2">
                 <Label htmlFor="design-ask">Ask Diana</Label>
                 <textarea
                   id="design-ask"
-                  className={`${inputClass} min-h-[72px]`}
+                  className={`${inputClass} min-h-[64px]`}
                   value={ask}
                   onChange={(e) => setAsk(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!thinking) askDiana(); } }}
-                  placeholder='e.g. "Make it feel like this picture but keep lessons readable" or "fewer Xs, more coral"'
+                  placeholder='e.g. "use a warmer red", "headings in all caps", "make the lesson paper off-white"'
                 />
-                {reference && (
-                  <div className="flex items-center gap-2">
-                    <img src={reference.preview} alt="Reference" className="w-12 h-12 object-cover rounded-md border border-line" />
-                    <div className="flex flex-wrap gap-1">
-                      {reference.colors.map((c) => <span key={c} title={c} className="w-4 h-4 rounded border border-black/10" style={{ background: c }} />)}
-                    </div>
-                    <button type="button" className="ml-auto text-xs text-gray-500 hover:text-ink" onClick={() => setReference(null)}>Remove</button>
-                  </div>
-                )}
-                <div className="flex items-center gap-2">
-                  <Button type="button" size="sm" variant="ai" icon={Sparkles} loading={thinking} disabled={!ask.trim() && !reference} onClick={askDiana}>Ask Diana</Button>
-                  <Button type="button" size="sm" variant="ghost" icon={ImagePlus} onClick={() => fileRef.current?.click()}>{reference ? 'Change picture' : 'Add picture'}</Button>
-                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) attach(f); e.target.value = ''; }} />
-                </div>
-                {thinking && <p className="text-xs text-gray-500">{progress || 'Diana is working on it…'} {reference ? 'With a picture this takes about a minute.' : ''}</p>}
-                {note && <p className={`text-xs ${note.ok ? 'text-gray-700' : 'text-red-700'}`}>{note.text}</p>}
+                <Button type="button" size="sm" variant="ai" icon={Sparkles} loading={thinking} disabled={!ask.trim()} onClick={askDiana}>Ask Diana</Button>
+                {thinking && <p className="text-xs text-gray-500">Diana is working on it…</p>}
               </div>
-            ) : (
-              <p className="text-xs text-gray-500 rounded-lg bg-canvas p-3">Turn on AI (top of the page) to ask Diana for a design. With a model that can see, like Qwen3-VL, you can also give her a reference picture.</p>
             )}
+            {note && <p className={`text-xs ${note.ok ? 'text-gray-700' : 'text-red-700'}`}>{note.text}</p>}
 
             <div>
               <Label>Start from a look</Label>
@@ -234,10 +254,10 @@ export const DesignDialog: React.FC<{ open: boolean; onClose: () => void; series
 
             {(['cover', 'divider'] as const).map((kind) => (
               <details key={kind} className="group">
-                <summary className="text-sm font-semibold cursor-pointer select-none">{kind === 'cover' ? 'Cover' : 'Divider pages'} <span className="font-normal text-gray-400">· {draft.custom[kind] ? 'written by Diana' : `${draft[kind].motifs.length} shapes`}</span></summary>
+                <summary className="text-sm font-semibold cursor-pointer select-none">{kind === 'cover' ? 'Cover' : 'Divider pages'} <span className="font-normal text-gray-400">· {draft.custom[kind] ? `from the ${draft.custom.name || 'imported'} layout` : `${draft[kind].motifs.length} shapes`}</span></summary>
                 {draft.custom[kind] && (
                   <div className="mt-3 rounded-lg bg-accent/5 border border-accent/20 p-3 text-xs space-y-2">
-                    <p>Diana wrote this page from scratch. Ask her for changes (e.g. "make the title bigger on the cover"), or switch back to the built-in design below.</p>
+                    <p>This page comes from the {draft.custom.name || 'imported'} layout file. To change it, update the layout with Claude and import it again, or use the built-in design below.</p>
                     <Button type="button" size="sm" variant="outline" onClick={() => edit({ custom: { [kind]: '' } })}>Use the built-in design</Button>
                   </div>
                 )}
@@ -285,7 +305,7 @@ export const DesignDialog: React.FC<{ open: boolean; onClose: () => void; series
                     <li key={rev.id} className="flex items-start gap-2 text-xs">
                       <span className="flex-1 min-w-0">
                         <b className="block truncate">{i === 0 ? 'Current · ' : ''}{rev.prompt ? `"${rev.prompt}"` : rev.note ?? 'Manual changes'}</b>
-                        <span className="text-gray-400">{when(rev.createdAt)} · {rev.source === 'diana' || rev.source === 'reference-image' ? 'Diana' : rev.source === 'look' ? 'Look' : 'By hand'}</span>
+                        <span className="text-gray-400">{when(rev.createdAt)} · {rev.source === 'diana' || rev.source === 'reference-image' ? 'Diana' : rev.source === 'look' ? 'Look or layout' : 'By hand'}</span>
                       </span>
                       {i > 0 && <button type="button" className="text-accent hover:underline inline-flex items-center gap-1" onClick={() => restore(rev)}><RotateCcw className="w-3 h-3" /> Restore</button>}
                     </li>

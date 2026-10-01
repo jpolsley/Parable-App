@@ -2,7 +2,7 @@ import React from 'react';
 import { DesignSurface, Part, PrintScope, Section, Series, Service } from '../../types';
 import { designAttrs, designOf, designVars, resolvePalette, surfaceText, toneColor } from '../../lib/design';
 import { MotifLayer, PageMark } from './Motifs';
-import { fillCustom } from '../../lib/customPage';
+import { fillCustom, fitText, scopeCss, scopeId } from '../../lib/customPage';
 import { PART_TYPES } from '../../lib/partTypes';
 import { aggregateSupplies, supplyTotal } from '../../lib/supplies';
 import { buildSchedule, formatClock, formatDate, formatDuration, sectionMinutes, serviceMinutes, visibleParts } from '../../lib/time';
@@ -17,6 +17,12 @@ import { partReady } from '../../lib/readiness';
 import './print.css';
 
 // Colors, fonts, corners and heading case for a series (or the default look).
+// CSS from an imported layout, scoped to this book's root element.
+const LayoutCss: React.FC<{ series?: Series }> = ({ series }) => {
+  const css = designOf(series).custom.css;
+  return css ? <style>{scopeCss(css, `.pr[data-custom="${scopeId(css)}"]`)}</style> : null;
+};
+
 const theme = (series?: Series) => { const d = designOf(series); return { style: designVars(d), ...designAttrs(d) }; };
 
 const cssString = (s: string) => `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, ' ')}"`;
@@ -55,6 +61,7 @@ export const PrintRoot: React.FC = () => {
     const footer: Record<string, string> = { 'series-small': 'Small group guides', 'series-family': 'Family pages', 'series-takehome': 'Take-home cards' };
     return (
       <div className="pr-root pr" {...theme(series)}>
+        <LayoutCss series={series} />
         <PageStyle series={series} footer={`${series.title} · ${footer[scope.kind] ?? 'Leader guide'}`} />
         <SeriesBook kind={scope.kind} series={series} weeks={weeksOf(db, series.id)} />
       </div>
@@ -67,6 +74,7 @@ export const PrintRoot: React.FC = () => {
   const footer = [series?.title, series && service.week ? `Week ${service.week}` : '', service.title].filter(Boolean).join(' · ');
   return (
     <div className="pr-root pr" {...theme(series)}>
+        <LayoutCss series={series} />
       <PageStyle series={series} footer={footer} />
       <ServiceScope scope={scope} service={service} series={series} />
     </div>
@@ -102,6 +110,7 @@ export const BookPreview: React.FC<{ series: Series; weeks: Service[]; onPartCli
   return (
     <div ref={outer} className="pv-outer">
       <div className="pr pr-preview" {...theme(series)} style={{ ...designVars(designOf(series)), zoom }} onClick={onClick}>
+        <LayoutCss series={series} />
         <SeriesBook kind="series-book" series={series} weeks={weeks} />
       </div>
     </div>
@@ -159,6 +168,7 @@ export const PrintPreview: React.FC<{ service: Service; series?: Series; kind: P
     <div ref={outer} className="pv-outer">
       {empty ? <p className="pv-empty">{empty}</p> : (
         <div className="pr pr-preview" {...theme(series)} style={{ ...designVars(designOf(series)), zoom }} onClick={onClick}>
+        <LayoutCss series={series} />
           {kind === 'week' ? <FullWeek service={service} series={series} divider /> : <ServiceScope scope={{ kind }} service={service} series={series} />}
         </div>
       )}
@@ -190,6 +200,7 @@ export const DesignPreview: React.FC<{ series: Series; weeks: Service[] }> = ({ 
   return (
     <div ref={outer} className="pv-outer">
       <div className="pr pr-preview" {...theme(series)} style={{ ...designVars(designOf(series)), zoom }}>
+        <LayoutCss series={series} />
         <SeriesCover series={series} weeks={weeks} />
         {first && <FullWeek service={first} series={series} divider />}
       </div>
@@ -246,11 +257,18 @@ const Surface: React.FC<{ kind: 'cover' | 'divider'; series?: Series; uid: strin
 // A page Diana wrote as HTML/SVG (already cleaned), with the series' text filled in.
 const CustomPage: React.FC<{ kind: 'cover' | 'divider'; series?: Series; values: Record<string, string> }> = ({ kind, series, values }) => {
   const p = resolvePalette(designOf(series));
+  const ref = React.useRef<HTMLElement>(null);
+  const html = fillCustom(designOf(series).custom[kind], values);
+  // On screen (previews) fit marked text now; for printing, printFit does it once the page is laid out.
+  React.useLayoutEffect(() => {
+    if (ref.current && ref.current.offsetParent !== null) fitText(ref.current);
+  }, [html]);
   return (
     <section
+      ref={ref}
       className={`${kind === 'cover' ? 'pr-cover' : 'pr-divider'} pr-custom`}
       style={{ background: p.deep, color: '#FFFFFF' }}
-      dangerouslySetInnerHTML={{ __html: fillCustom(designOf(series).custom[kind], values) }}
+      dangerouslySetInnerHTML={{ __html: html }}
     />
   );
 };

@@ -1,3 +1,4 @@
+import { fitText } from './customPage';
 // Each lesson section starts its own page, so a section a few lines too long leaves those lines
 // stranded on an almost empty page. Just before printing, measure each section and shrink the
 // ones that only slightly overflow so they fit their page (or pages). Long sections still flow normally.
@@ -9,7 +10,8 @@ const MAX_SHRINK = 0.82; // never smaller than this, so text stays comfortable t
 
 export const fitSectionsToPages = (root: HTMLElement) => {
   const sections = [...root.querySelectorAll<HTMLElement>('.pr-flow > .pr-sec')];
-  if (!sections.length) return;
+  const fitBoxes = root.querySelector('[data-fit]');
+  if (!sections.length && !fitBoxes) return;
   const saved = root.getAttribute('style') ?? '';
   // The print view is hidden on screen; lay it out off-screen at page width to measure it.
   root.style.display = 'block';
@@ -17,6 +19,8 @@ export const fitSectionsToPages = (root: HTMLElement) => {
   root.style.left = '-20000px';
   root.style.top = '0';
   root.style.width = `${CONTENT_WIDTH}px`;
+  // Text in layout pages marked data-fit shrinks to fit its box (the page is laid out now, so it can be measured).
+  fitText(root);
   for (const section of sections) {
     section.style.zoom = '';
     const height = section.getBoundingClientRect().height;
