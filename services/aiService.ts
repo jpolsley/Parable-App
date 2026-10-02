@@ -2,6 +2,7 @@ import { BookDesign, BookDesignPatch, FamilyCues, Part, Section, Series, Service
 import { applyPatch, describeDesign } from '../lib/design';
 import { newPart, newSection, newSeries, newService, newSupply } from '../lib/factory';
 import { PART_TYPE_KEYS, PART_TYPES } from '../lib/partTypes';
+import { playbookChecklist, playbookForDrafting } from '../lib/playbook';
 import { AISettings, cleanBaseUrl, serverKind, serverOrigin } from './aiSettings';
 
 interface ChatMessage {
@@ -125,15 +126,21 @@ export const parseJsonLoose = <T>(text: string): T => {
   return (Array.isArray(found) ? { items: found } : found) as T;
 };
 
+// The leader's Ministry Playbook rides along with every writing request, minus the parts only reviews need.
+const system = (settings: AISettings) => {
+  const playbook = settings.usePlaybook ? playbookForDrafting(settings.playbook ?? '') : '';
+  return playbook ? `${SYSTEM}\n\nFollow the leader's Ministry Playbook below in everything you write.\n\n${playbook}` : SYSTEM;
+};
+
 // Structured requests are their own focused call that asks for only the JSON.
 const chatJson = async <T>(settings: AISettings, prompt: string): Promise<T> =>
   parseJsonLoose<T>(await chat(settings, [
-    { role: 'system', content: `${SYSTEM} You always respond with a single valid JSON object and nothing else.` },
+    { role: 'system', content: `${system(settings)}\n\nYou always respond with a single valid JSON object and nothing else.` },
     { role: 'user', content: prompt },
   ], true));
 
 const chatText = (settings: AISettings, prompt: string) =>
-  chat(settings, [{ role: 'system', content: SYSTEM }, { role: 'user', content: prompt }], false);
+  chat(settings, [{ role: 'system', content: system(settings) }, { role: 'user', content: prompt }], false);
 
 export const testConnection = async (settings: AISettings): Promise<string> => {
   const kind = serverKind(settings);
@@ -314,6 +321,68 @@ export const draftObjectives = (settings: AISettings, service: ServiceWithSeries
 
 export const askAboutService = (settings: AISettings, service: Service, question: string) =>
   chatText(settings, `${describeService(service)}\n\nThe leader asks: ${question}\n\nAnswer helpfully and concisely.`);
+
+// ---------- Playbook review ----------
+
+// The whole lesson as plain text, so a review can read what the leader will actually say and do.
+export const lessonText = (service: ServiceWithSeries) => {
+  const series = service.seriesInfo;
+  const lines = [
+    `Lesson: "${service.title}" for ${service.audience}.`,
+    series && `Series: "${series.title}"${service.week ? `, week ${service.week}` : ''}.${series.bigIdea ? ` Series theme: ${series.bigIdea}` : ''}`,
+    service.scripture && `Scripture: ${service.scripture}`,
+    service.bigIdea && `Big idea: ${service.bigIdea}`,
+    ...service.sections.flatMap((s) => [
+      `## ${s.title}`,
+      ...s.parts.filter((p) => !p.hidden).flatMap((p) => [
+        `### ${p.title} (${p.minutes} min)`,
+        p.script && `Leader says: ${p.script}`,
+        p.instructions && `Directions: ${p.instructions}`,
+        p.leaderNotes && `Leader notes: ${p.leaderNotes}`,
+      ]),
+    ]),
+    '## Family page',
+    `Morning: ${service.family.morning}`,
+    `On the go: ${service.family.onTheGo}`,
+    `Dinner: ${service.family.meal}`,
+    `Bedtime: ${service.family.bedtime}`,
+  ];
+  return lines.filter(Boolean).join('\n');
+};
+
+export interface ReviewItem {
+  question: string;
+  pass: boolean;
+  part: string;
+  fix: string;
+}
+
+// Diana checks one lesson against the playbook's yes/no checklist.
+export const reviewLesson = async (settings: AISettings, service: ServiceWithSeries): Promise<ReviewItem[]> => {
+  const questions = playbookChecklist(settings.playbook ?? '');
+  if (!questions.length) throw new Error('Your playbook has no review checklist. Add a "Lesson review checklist" section of yes/no questions in AI settings.');
+  const result = await chat(settings, [
+    { role: 'system', content: `${SYSTEM}\n\nYou review lessons against the leader's Ministry Playbook.\n\n${playbookForDrafting(settings.playbook)}\n\nYou always respond with a single valid JSON object and nothing else.` },
+    {
+      role: 'user',
+      content: [
+        lessonText(service),
+        '',
+        'Check the lesson above against each question. Answer only from what the lesson actually says.',
+        ...questions.map((q, i) => `${i + 1}. ${q}`),
+        '',
+        `Respond as {"results":[{"n":1,"pass":true,"part":"the lesson part this is about","fix":"if pass is false, one specific change to make; otherwise empty"}]} with exactly ${questions.length} results, in order.`,
+      ].join('\n'),
+    },
+  ], true);
+  const parsed = parseJsonLoose<{ results?: unknown[]; items?: unknown[] }>(result);
+  const rows = (parsed.results ?? parsed.items ?? []) as { n?: number; pass?: unknown; part?: unknown; fix?: unknown }[];
+  return questions.map((question, i) => {
+    const r = rows.find((x) => x?.n === i + 1) ?? rows[i] ?? {};
+    const pass = r.pass === true || r.pass === 'true' || r.pass === 'yes';
+    return { question, pass, part: typeof r.part === 'string' ? r.part : '', fix: pass ? '' : typeof r.fix === 'string' ? r.fix : '' };
+  });
+};
 
 // ---------- Series ----------
 
