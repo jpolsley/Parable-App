@@ -4,7 +4,7 @@ import { clonePart, newPart, newSeries, newService } from '../lib/factory';
 import { migrateLegacySeries, reschedule, weeksOf } from '../lib/series';
 import { AISettings, loadSettings, saveSettings } from '../services/aiSettings';
 import { testConnection } from '../services/aiService';
-import { SAMPLES } from '../lib/samples';
+import { SAMPLE_LAYOUTS, SAMPLES } from '../lib/samples';
 import { PRINT_FACES } from '../lib/design';
 import { readLayout } from '../lib/layouts';
 import { fitSectionsToPages } from '../lib/printFit';
@@ -22,15 +22,20 @@ const withSamples = (db: Database): Database => {
     seeded = [];
   }
   const fresh = SAMPLES.filter((s) => !seeded.includes(s.key));
-  if (!fresh.length) return db;
+  const freshLayouts = SAMPLE_LAYOUTS.filter((s) => !seeded.includes(s.key));
+  if (!fresh.length && !freshLayouts.length) return db;
   let next = db;
   for (const { data } of fresh) {
     const series = (data.series ?? []).map(newSeries).filter((s) => !next.series.some((x) => x.id === s.id));
     const services = (data.services ?? []).map((s) => newService(s as unknown as Record<string, unknown>)).filter((s) => !next.services.some((x) => x.id === s.id));
     next = { ...next, series: [...next.series, ...series], services: [...next.services, ...services] };
   }
+  for (const { data } of freshLayouts) {
+    const pack = readLayout(data);
+    if (!(next.layouts ?? []).some((l) => l.id === pack.id)) next = { ...next, layouts: [...(next.layouts ?? []), pack] };
+  }
   try {
-    localStorage.setItem(SEEDED_KEY, JSON.stringify([...seeded, ...fresh.map((s) => s.key)]));
+    localStorage.setItem(SEEDED_KEY, JSON.stringify([...seeded, ...fresh.map((s) => s.key), ...freshLayouts.map((s) => s.key)]));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch {
     // storage full or blocked: the samples still show for this visit
@@ -237,8 +242,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setDb((d) => ({ ...d, library: d.library.filter((p) => p.id !== id) }));
   }, []);
 
-  // Merge a backup or a single exported service. Existing ids are replaced.
-  // Imported layout files, kept in this browser's library so any series can use them.
+  // The design library: imported layout files, kept in this browser so any series can use them.
+  // Importing a file with the same id replaces the saved version.
   const addLayout = useCallback((pack: LayoutPack) => {
     setDb((d) => ({ ...d, layouts: [pack, ...(d.layouts ?? []).filter((l) => l.id !== pack.id)] }));
   }, []);
@@ -246,12 +251,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setDb((d) => ({ ...d, layouts: (d.layouts ?? []).filter((l) => l.id !== id) }));
   }, []);
 
+  // Merge a backup or a single exported service. Existing ids are replaced.
   const importDatabase = useCallback((data: Partial<Database>) => {
     const { services, series } = migrateLegacySeries(
       (data.services ?? []) as unknown as Record<string, unknown>[],
       (data.series ?? []).map(newSeries),
     );
     const library = (data.library ?? []).map(newPart);
+    const layouts = (data.layouts ?? []).flatMap((l) => { try { return [readLayout(l)]; } catch { return []; } });
     setDb((d) => {
       const ids = new Set(services.map((s) => s.id));
       const seriesIds = new Set(series.map((s) => s.id));
@@ -265,9 +272,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         series: allSeries,
         services: [...imported, ...d.services.filter((s) => !ids.has(s.id))],
         library: [...library, ...d.library.filter((p) => !libIds.has(p.id))],
+        layouts: [...layouts, ...(d.layouts ?? []).filter((l) => !layouts.some((x) => x.id === l.id))],
       };
     });
-    return series.length + services.length + library.length;
+    return series.length + services.length + library.length + layouts.length;
   }, []);
 
   const setAiSettings = useCallback((s: AISettings) => {

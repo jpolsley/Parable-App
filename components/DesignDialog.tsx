@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Check, History, LayoutTemplate, Palette, RotateCcw, Sparkles, Trash2, Upload, X } from 'lucide-react';
+import { Check, History, Palette, RotateCcw, Sparkles, Upload, X } from 'lucide-react';
 import { BookDesign, DesignRevision, DesignSurface, DesignTone, Series, Service } from '../types';
 import { BODY_FONTS, DISPLAY_FONTS, LABEL_FONTS, LOOKS, TONES, applyPatch, designOf, fontName, resolvePalette, toneColor } from '../lib/design';
 import { uid } from '../lib/factory';
-import { applyLayout, readLayout, removeLayout } from '../lib/layouts';
-import { readJsonFile } from '../lib/files';
+import { applyLayout, removeLayout } from '../lib/layouts';
 import { designPatch } from '../services/aiService';
 import { useStore } from '../store/StoreContext';
-import { DesignPreview } from './print/PrintView';
+import { DesignPreview, LayoutThumb } from './print/PrintView';
+import { useImportDesign } from './DesignLibrary';
 import { Button, IconButton, Label, inputClass } from './ui';
 
 const same = (a: BookDesign, b: BookDesign) => JSON.stringify(a) === JSON.stringify(b);
@@ -49,7 +49,8 @@ const when = (t: number) => new Date(t).toLocaleString(undefined, { month: 'shor
 // Design a series' printed book: apply a layout file, ask Diana for changes, start from a look,
 // or adjust anything by hand. Changes preview live and save with history on "Apply".
 export const DesignDialog: React.FC<{ open: boolean; onClose: () => void; series: Series; weeks: Service[] }> = ({ open, onClose, series, weeks }) => {
-  const { db, updateSeries, aiSettings, toast, addLayout, deleteLayout } = useStore();
+  const { db, updateSeries, aiSettings, toast } = useStore();
+  const importDesign = useImportDesign();
   const saved = designOf(series);
   const [draft, setDraft] = useState<BookDesign>(saved);
   const [pending, setPending] = useState<Omit<DesignRevision, 'id' | 'createdAt' | 'design'>>({ source: 'manual' });
@@ -80,16 +81,13 @@ export const DesignDialog: React.FC<{ open: boolean; onClose: () => void; series
   const editSurface = (kind: 'cover' | 'divider', patch: Partial<DesignSurface>) => edit({ [kind]: patch });
   const pal = resolvePalette(draft);
 
-  // A layout file made outside Parable (e.g. with Claude): kept in the library, then applied to this book.
+  // A design file made outside Parable (e.g. with Claude) goes into the design library; this book only changes when it's picked.
   const importLayout = async (file: File) => {
     try {
-      const pack = readLayout(await readJsonFile(file));
-      addLayout(pack);
-      setDraft((d) => applyLayout(d, pack));
-      setPending({ source: 'look', note: `${pack.name} layout` });
-      setNote({ ok: true, text: `Added "${pack.name}" to your layouts and previewed it. Apply it to keep it.` });
+      const pack = await importDesign(file, true);
+      setNote({ ok: true, text: `Saved "${pack.name}" to your design library. Click it to try it on this book.` });
     } catch (e) {
-      setNote({ ok: false, text: e instanceof Error ? e.message : "That file couldn't be read as a layout." });
+      setNote({ ok: false, text: e instanceof Error ? e.message : "That file couldn't be read as a design." });
     }
   };
 
@@ -150,32 +148,37 @@ export const DesignDialog: React.FC<{ open: boolean; onClose: () => void; series
 
             <div className="rounded-xl border border-line p-3 space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <Label>Layouts</Label>
-                <Button type="button" size="sm" variant="ghost" icon={Upload} onClick={() => fileRef.current?.click()}>Import layout file</Button>
+                <Label>Design library</Label>
+                <Button type="button" size="sm" variant="ghost" icon={Upload} onClick={() => fileRef.current?.click()}>Import design file</Button>
                 <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importLayout(f); e.target.value = ''; }} />
               </div>
               {(db.layouts ?? []).length === 0 ? (
-                <p className="text-xs text-gray-500">A layout file is a complete book design in code: cover, divider pages and page styles. Make one with Claude from any picture, then import it here.</p>
+                <p className="text-xs text-gray-500">A design file is a complete book look in code: cover, divider pages and page styles. Make one with Claude from any picture, then import it here. It's saved in your Library for every series.</p>
               ) : (
-                <ul className="space-y-1">
+                <ul className="grid grid-cols-3 gap-2">
                   {(db.layouts ?? []).map((l) => {
                     const active = draft.custom.name === l.name;
                     return (
-                      <li key={l.id} className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 ${active ? 'border-accent ring-2 ring-accent/20' : 'border-line'}`}>
-                        <LayoutTemplate className="w-4 h-4 text-gray-400 shrink-0" />
-                        <button type="button" className="flex-1 min-w-0 text-left" title={l.description} onClick={() => { setDraft((d) => applyLayout(d, l)); setPending({ source: 'look', note: `${l.name} layout` }); setNote(null); }}>
-                          <span className="block text-sm font-semibold truncate">{l.name}</span>
-                          {l.description && <span className="block text-[11px] text-gray-500 truncate">{l.description}</span>}
+                      <li key={l.id}>
+                        <button
+                          type="button"
+                          title={l.description}
+                          aria-pressed={active}
+                          onClick={() => { setDraft((d) => applyLayout(d, l)); setPending({ source: 'look', note: `${l.name} design` }); setNote(null); }}
+                          className={`w-full rounded-lg border p-1.5 flex flex-col items-center gap-1 transition-colors ${active ? 'border-accent ring-2 ring-accent/20' : 'border-line hover:border-gray-400'}`}
+                        >
+                          <LayoutThumb pack={l} series={series} weeks={weeks} width={92} />
+                          <span className="text-[11px] font-semibold truncate w-full text-center inline-flex items-center justify-center gap-1">
+                            {active && <Check className="w-3 h-3 text-accent shrink-0" />}{l.name}
+                          </span>
                         </button>
-                        {active && <Check className="w-4 h-4 text-accent shrink-0" />}
-                        <IconButton icon={Trash2} label={`Remove ${l.name} from your layouts`} onClick={() => deleteLayout(l.id)} />
                       </li>
                     );
                   })}
                 </ul>
               )}
               {draft.custom.name && (
-                <Button type="button" size="sm" variant="outline" onClick={() => { setDraft((d) => removeLayout(d)); setPending({ source: 'manual', note: 'Removed the layout' }); }}>
+                <Button type="button" size="sm" variant="outline" onClick={() => { setDraft((d) => removeLayout(d)); setPending({ source: 'manual', note: 'Removed the design' }); }}>
                   Stop using “{draft.custom.name}”
                 </Button>
               )}

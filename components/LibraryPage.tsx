@@ -4,6 +4,7 @@ import { useStore } from '../store/StoreContext';
 import { PART_TYPES } from '../lib/partTypes';
 import { TypeChip } from './PartCard';
 import { EmptyState, IconButton, inputClass } from './ui';
+import { DesignLibrary } from './DesignLibrary';
 
 export const LibraryPage: React.FC = () => {
   const { db, removeFromLibrary } = useStore();
@@ -14,11 +15,16 @@ export const LibraryPage: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 md:px-6 pb-24">
       <section className="py-10">
-        <h1 className="text-4xl md:text-5xl font-display">Parts library</h1>
-        <p className="text-gray-600 mt-3 max-w-2xl">
+        <h1 className="text-4xl md:text-5xl font-display">Library</h1>
+        <p className="text-gray-600 mt-3 max-w-2xl">Book designs and parts you reuse across series.</p>
+      </section>
+      <DesignLibrary />
+      <div className="mb-4">
+        <h2 className="text-2xl font-display">Parts</h2>
+        <p className="text-sm text-gray-600 mt-1 max-w-2xl">
           Parts you reuse every week, like welcome scripts, games, or a prayer routine. Save a part from its menu, then insert it into any section with <strong>From library</strong>.
         </p>
-      </section>
+      </div>
       {db.library.length === 0 ? (
         <div className="border-2 border-dashed border-gray-300 rounded-xl bg-white/50">
           <EmptyState icon={Bookmark} title="Nothing saved yet">Open a service, then choose <strong>Save to library</strong> in any part's ⋮ menu.</EmptyState>
