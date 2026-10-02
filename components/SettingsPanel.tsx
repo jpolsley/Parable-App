@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { CheckCircle2, AlertTriangle, Plug } from 'lucide-react';
 import { AIServer, AISettings, DEFAULT_SETTINGS, cleanBaseUrl, serverKind } from '../services/aiSettings';
 import { testConnection } from '../services/aiService';
+import { DEFAULT_PLAYBOOK, playbookChecklist } from '../lib/playbook';
 import { useStore } from '../store/StoreContext';
 import { Button, Label, Modal, Toggle, inputClass } from './ui';
 
@@ -106,6 +107,25 @@ export const SettingsPanel: React.FC = () => {
           {serverKind(draft) === 'steward' && (
             <Toggle checked={draft.useDocs} onChange={(useDocs) => setDraft({ ...draft, useDocs })} label="Let Steward add passages from my documents" />
           )}
+          <div className="border-t border-line pt-4 space-y-2">
+            <Toggle checked={draft.usePlaybook} onChange={(usePlaybook) => setDraft({ ...draft, usePlaybook })} label="Diana follows my Ministry Playbook" />
+            <p className="text-xs text-gray-500">
+              Diana reads this whenever she writes. The <b>Review</b> tab on a lesson checks it against the questions under "Lesson review checklist".
+              Keep it short: a laptop model only remembers a few pages at a time.
+            </p>
+            <textarea
+              aria-label="Ministry Playbook"
+              className={`${inputClass} font-mono text-xs leading-relaxed`}
+              rows={12}
+              value={draft.playbook}
+              onChange={(e) => setDraft({ ...draft, playbook: e.target.value })}
+              placeholder="Paste your Ministry Playbook here."
+            />
+            <div className="flex items-center justify-between gap-3 text-xs text-gray-500">
+              <span>{playbookChecklist(draft.playbook).length} review questions · about {Math.round(draft.playbook.length / 4).toLocaleString()} tokens</span>
+              <button type="button" className="underline hover:text-black" onClick={() => setDraft({ ...draft, playbook: DEFAULT_PLAYBOOK })}>Restore starting playbook</button>
+            </div>
+          </div>
           <div className="flex items-center gap-3 flex-wrap">
             <Button type="button" size="sm" variant="outline" icon={Plug} loading={testing} onClick={test}>Test connection</Button>
             {status && (

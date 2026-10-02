@@ -1,3 +1,5 @@
+import { DEFAULT_PLAYBOOK } from '../lib/playbook';
+
 // 'steward' is the user's own FastAPI server in front of Ollama (handles CORS, thinking, keep-alive).
 export type AIServer = 'auto' | 'ollama' | 'steward' | 'openai';
 
@@ -8,6 +10,8 @@ export interface AISettings {
   apiKey: string; // optional; most self-hosted servers ignore it (Steward needs its key)
   server: AIServer;
   useDocs: boolean; // Steward only: let it add passages from the user's documents
+  usePlaybook: boolean; // Diana follows the Ministry Playbook when she drafts
+  playbook: string;
 }
 
 // 'auto' guesses from the port, so a Tailscale https address should pick a type explicitly.
@@ -30,6 +34,8 @@ export const DEFAULT_SETTINGS: AISettings = {
   apiKey: import.meta.env.VITE_AI_API_KEY || '',
   server: 'auto',
   useDocs: false,
+  usePlaybook: true,
+  playbook: DEFAULT_PLAYBOOK,
 };
 
 export const loadSettings = (): AISettings => {

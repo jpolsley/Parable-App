@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { ExternalLink, Link as LinkIcon, Package, Printer, ScrollText, Sparkles } from 'lucide-react';
+import { CheckCircle2, ClipboardCheck, ExternalLink, Link as LinkIcon, Package, Printer, ScrollText, Sparkles, XCircle } from 'lucide-react';
 import { FamilyCues, Service } from '../types';
 import { aggregateSupplies } from '../lib/supplies';
 import { visibleParts } from '../lib/time';
-import { askAboutService, draftFamilyCue, draftObjectives, ServiceWithSeries } from '../services/aiService';
+import { askAboutService, draftFamilyCue, draftObjectives, ReviewItem, reviewLesson, ServiceWithSeries } from '../services/aiService';
 import { FAMILY_LABELS, familyCues } from '../lib/roles';
 import { newFamily } from '../lib/factory';
 import { AIAssist } from './AIAssist';
 import { useStore } from '../store/StoreContext';
 import { Button, EmptyState, Label, TextArea, inputClass } from './ui';
 
-type Tab = 'details' | 'family' | 'supplies' | 'media' | 'script' | 'ai';
+type Tab = 'details' | 'family' | 'supplies' | 'media' | 'script' | 'review' | 'ai';
 
 interface SidePanelProps {
   service: Service;
@@ -27,7 +27,7 @@ export const SidePanel: React.FC<SidePanelProps> = ({ service, update, onJumpToP
     { id: 'supplies', label: 'Supplies' },
     { id: 'media', label: 'Media' },
     { id: 'script', label: 'Script' },
-    ...(aiSettings.enabled ? [{ id: 'ai' as Tab, label: 'Ask AI' }] : []),
+    ...(aiSettings.enabled ? [{ id: 'review' as Tab, label: 'Review' }, { id: 'ai' as Tab, label: 'Ask AI' }] : []),
   ];
 
   return (
@@ -52,6 +52,7 @@ export const SidePanel: React.FC<SidePanelProps> = ({ service, update, onJumpToP
         {tab === 'supplies' && <Supplies service={service} update={update} />}
         {tab === 'media' && <Media service={service} />}
         {tab === 'script' && <Script service={service} onJumpToPart={onJumpToPart} />}
+        {tab === 'review' && <Review service={service} />}
         {tab === 'ai' && <AskAI service={service} />}
       </div>
     </aside>
@@ -229,6 +230,64 @@ const Script: React.FC<{ service: Service; onJumpToPart: (id: string) => void }>
           <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed mt-1">{part.script}</p>
         </div>
       ))}
+    </div>
+  );
+};
+
+// Diana checks the lesson against the playbook's yes/no checklist. Results stay until the lesson is reviewed again.
+const Review: React.FC<{ service: Service }> = ({ service }) => {
+  const { aiSettings, setSettingsOpen } = useStore();
+  const [results, setResults] = useState<ReviewItem[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const run = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      setResults(await reviewLesson(aiSettings, service as ServiceWithSeries));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const misses = results?.filter((r) => !r.pass).length ?? 0;
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-gray-500">
+        Diana checks this lesson against your Ministry Playbook's checklist and suggests a fix for anything missing. She doesn't change the lesson.
+      </p>
+      <div className="flex items-center gap-3 flex-wrap">
+        <Button type="button" size="sm" variant="ai" icon={ClipboardCheck} loading={loading} onClick={run}>{results ? 'Review again' : 'Review lesson'}</Button>
+        <button type="button" className="text-xs text-gray-500 hover:text-black underline" onClick={() => setSettingsOpen(true)}>Edit playbook</button>
+      </div>
+      {loading && <p className="text-xs text-gray-400">This can take a minute on a laptop model.</p>}
+      {error && <p className="text-sm text-red-700">{error}</p>}
+      {results && !loading && (
+        <>
+          <p className="text-sm font-semibold">{misses ? `${results.length - misses} of ${results.length} met. ${misses} to look at:` : `All ${results.length} met.`}</p>
+          <ol className="space-y-2">
+            {[...results].sort((a, b) => Number(a.pass) - Number(b.pass)).map((r) => (
+              <li key={r.question} className={`rounded-md border p-2.5 text-sm ${r.pass ? 'border-gray-200' : 'border-amber-300 bg-amber-50'}`}>
+                <div className="flex gap-2">
+                  {r.pass ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" /> : <XCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />}
+                  <div className="min-w-0">
+                    <p className={r.pass ? 'text-gray-500' : 'text-ink'}>{r.question}</p>
+                    {!r.pass && (r.part || r.fix) && (
+                      <p className="mt-1 text-gray-700">
+                        {r.part && <span className="font-semibold">{r.part}: </span>}
+                        {r.fix}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
     </div>
   );
 };
