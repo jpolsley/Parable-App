@@ -1,8 +1,9 @@
 # Layout files
 
 A layout file (`*.parable-layout.json`) is a complete book design in code. Import it in Parable under
-**Series → Design → Layouts → Import layout file**. It's kept in that browser's layout library and can be
-applied to any series. `spine.parable-layout.json` is the first one.
+**Library → Book designs → Import design file** (or **Design → Design library** in a series). It's saved in
+that browser's design library, without changing any book, and can then be picked for any series. Importing a
+file with the same `id` replaces the saved version. `spine.parable-layout.json` is built in.
 
 ```json
 {

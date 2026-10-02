@@ -1,5 +1,6 @@
 import React from 'react';
-import { DesignSurface, Part, PrintScope, Section, Series, Service } from '../../types';
+import { DesignSurface, LayoutPack, Part, PrintScope, Section, Series, Service } from '../../types';
+import { applyLayout } from '../../lib/layouts';
 import { designAttrs, designOf, designVars, resolvePalette, surfaceText, toneColor } from '../../lib/design';
 import { MotifLayer, PageMark } from './Motifs';
 import { fillCustom, fitText, scopeCss, scopeId } from '../../lib/customPage';
@@ -203,6 +204,20 @@ export const DesignPreview: React.FC<{ series: Series; weeks: Service[] }> = ({ 
         <LayoutCss series={series} />
         <SeriesCover series={series} weeks={weeks} />
         {first && <FullWeek service={first} series={series} divider />}
+      </div>
+    </div>
+  );
+};
+
+// A library design's cover, drawn small with a real series' text (or the series given), for picking at a glance.
+export const LayoutThumb: React.FC<{ pack: LayoutPack; series: Series; weeks: Service[]; width?: number }> = ({ pack, series, weeks, width = 180 }) => {
+  // Its own id, so each thumbnail's SVG masks stay separate.
+  const shown = { ...series, id: `${series.id}-${pack.id}`, design: applyLayout(designOf(series), pack) };
+  return (
+    <div className="overflow-hidden rounded-md shadow-sm ring-1 ring-black/10 bg-white" style={{ width, height: width * (11 / 8.5) }} aria-hidden="true">
+      <div className="pr pr-preview pr-thumb" {...theme(shown)} style={{ ...designVars(designOf(shown)), zoom: width / SHEET_PX }}>
+        <LayoutCss series={shown} />
+        <SeriesCover series={shown} weeks={weeks} />
       </div>
     </div>
   );
