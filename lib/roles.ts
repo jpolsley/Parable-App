@@ -32,6 +32,7 @@ export const smallGroupGuide = (service: Service) => {
     icebreaker: text(icebreaker),
     prayer: text(prayer),
     questions: discussion.flatMap((p) => listItems(p.script)),
+    notes: discussion.map((p) => p.leaderNotes.trim()).filter(Boolean).join('\n'),
     activities,
     challenge: text(challenge),
   };

@@ -614,6 +614,12 @@ const SmallGroupPage: React.FC<{ service: Service; series?: Series }> = ({ servi
           </ol>
         </div>
       )}
+      {g.notes && (
+        <div className="pr-sg-notes">
+          <p className="pr-sg-kicker">Leading well</p>
+          <Blocks text={g.notes} />
+        </div>
+      )}
       {(g.prayer || g.challenge) && (
         <div className={`pr-sg-close ${g.prayer && g.challenge ? 'two' : ''}`}>
           {g.prayer && (

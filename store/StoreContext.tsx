@@ -4,7 +4,7 @@ import { clonePart, newPart, newSeries, newService } from '../lib/factory';
 import { migrateLegacySeries, reschedule, weeksOf } from '../lib/series';
 import { AISettings, loadSettings, saveSettings } from '../services/aiSettings';
 import { testConnection } from '../services/aiService';
-import { SAMPLE_LAYOUTS, SAMPLES } from '../lib/samples';
+import { SAMPLE_LAYOUTS, SAMPLES, seriesFingerprint } from '../lib/samples';
 import { PRINT_FACES } from '../lib/design';
 import { readLayout } from '../lib/layouts';
 import { fitSectionsToPages } from '../lib/printFit';
@@ -25,9 +25,31 @@ const withSamples = (db: Database): Database => {
   const freshLayouts = SAMPLE_LAYOUTS.filter((s) => !seeded.includes(s.key));
   if (!fresh.length && !freshLayouts.length) return db;
   let next = db;
-  for (const { data } of fresh) {
-    const series = (data.series ?? []).map(newSeries).filter((s) => !next.series.some((x) => x.id === s.id));
-    const services = (data.services ?? []).map((s) => newService(s as unknown as Record<string, unknown>)).filter((s) => !next.services.some((x) => x.id === s.id));
+  for (const { data, replaces } of fresh) {
+    let series = (data.series ?? []).map(newSeries);
+    let services = (data.services ?? []).map((s) => newService(s as unknown as Record<string, unknown>));
+    const old = replaces && seeded.includes(replaces.key) ? next.series.find((s) => s.id === replaces.seriesId) : undefined;
+    if (old && replaces) {
+      const oldWeeks = next.services.filter((s) => s.seriesId === old.id);
+      const untouched = seriesFingerprint(old) === replaces.fingerprint && oldWeeks.every((s) => s.updatedAt === replaces.stamp);
+      if (untouched) {
+        // Swap in the new version, keeping the book design the leader picked.
+        series = series.map((s) => (s.id === old.id ? { ...s, design: old.design, designHistory: old.designHistory } : s));
+        next = { ...next, series: next.series.filter((s) => s.id !== old.id), services: next.services.filter((s) => s.seriesId !== old.id) };
+      } else {
+        // The leader changed their copy: keep it, and add the new version beside it under new ids.
+        const v = (id: string) => `${id}-${replaces.key}-next`;
+        series = series.map((s) => ({ ...s, id: v(s.id), title: `${s.title} (revised)`, design: old.design }));
+        services = services.map((s) => ({
+          ...s,
+          id: v(s.id),
+          seriesId: s.seriesId ? v(s.seriesId) : null,
+          sections: s.sections.map((sec) => ({ ...sec, id: v(sec.id), parts: sec.parts.map((p) => ({ ...p, id: v(p.id) })) })),
+        }));
+      }
+    }
+    series = series.filter((s) => !next.series.some((x) => x.id === s.id));
+    services = services.filter((s) => !next.services.some((x) => x.id === s.id));
     next = { ...next, series: [...next.series, ...series], services: [...next.services, ...services] };
   }
   for (const { data } of freshLayouts) {
