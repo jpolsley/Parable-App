@@ -3,7 +3,12 @@
 A layout file (`*.parable-layout.json`) is a complete book design in code. Import it in Parable under
 **Library → Book designs → Import design file** (or **Design → Design library** in a series). It's saved in
 that browser's design library, without changing any book, and can then be picked for any series. Importing a
-file with the same `id` replaces the saved version. `spine.parable-layout.json` is built in.
+file with the same `id` replaces the saved version. `spine.parable-layout.json` and `poster-club.parable-layout.json`
+are built in.
+
+Placeholders also work inside attributes, so a divider can style itself by week: Poster Club's divider is
+`<div class="pcdv {{title}}">`, which becomes `class="pcdv Week 3"`, and its CSS uses `.pcdv[class~="3"]` to give
+week 3 its own background, layout and sticker (the leader guide divider has no `Week` class).
 
 ```json
 {

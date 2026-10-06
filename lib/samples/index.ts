@@ -1,6 +1,7 @@
 import { Database } from '../../types';
 import bless from './bless.json';
 import spine from '../../layouts/spine.parable-layout.json';
+import posterClub from '../../layouts/poster-club.parable-layout.json';
 
 // A newer version of a built-in series, and how to recognize the older copy a browser may still hold:
 // an untouched copy (series text and every week exactly as shipped) is replaced in place.
@@ -30,4 +31,5 @@ export const seriesFingerprint = (s: { title: string; description: string; bigId
 // Book designs that come built in, added to the design library once per browser the same way.
 export const SAMPLE_LAYOUTS: { key: string; data: unknown }[] = [
   { key: 'layout:spine', data: spine },
+  { key: 'layout:poster-club', data: posterClub },
 ];
