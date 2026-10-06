@@ -133,14 +133,25 @@ export interface Series {
   description: string;
   audience: string;
   color: SeriesColor;
-  startDate: string; // YYYY-MM-DD; week N is scheduled startDate + 7 * (N - 1)
+  startDate: string; // legacy: lessons used to be scheduled from this; dates now live in runs
   bigIdea: string;
   memoryVerse: string;
   leaderGuide: string; // welcome letter for the "Start here" page of the printed book
   design?: BookDesign; // missing means the default look
   designHistory?: DesignRevision[]; // newest first, kept short
+  runs: TeachingRun[]; // each time this series is taught; the series itself has no dates
+  printRun: string; // id of the run whose dates go on printouts; '' prints without dates
   createdAt: number;
   updatedAt: number;
+}
+
+// One time a series is taught: a name, an optional start time, and a date (or label) per lesson.
+export interface TeachingRun {
+  id: string;
+  name: string; // "Wednesday Youth · Fall 2026"
+  time: string; // HH:MM, or '' for no clock times
+  dates: Record<string, string>; // lesson id → YYYY-MM-DD, or a label like "Sat morning"
+  labels: boolean; // true: each lesson gets a label ("Sat morning") instead of a calendar date
 }
 
 export interface Service {

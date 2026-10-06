@@ -1,4 +1,4 @@
-import { DesignRevision, FamilyCues, LinkItem, Part, PartType, Section, SectionRole, Series, SeriesColor, Service, Supply, SupplyPer } from '../types';
+import { DesignRevision, FamilyCues, LinkItem, Part, PartType, Section, SectionRole, Series, SeriesColor, Service, Supply, SupplyPer, TeachingRun } from '../types';
 import { PART_TYPE_KEYS } from './partTypes';
 import { normalizeDesign } from './design';
 
@@ -109,6 +109,16 @@ export const newService = (s: Partial<Record<keyof Service, unknown>> = {}): Ser
   };
 };
 
+export const newRun = (r: Partial<Record<keyof TeachingRun, unknown>> = {}): TeachingRun => ({
+  id: str(r.id) || uid(),
+  name: str(r.name, 'Untitled run') || 'Untitled run',
+  time: /^\d{1,2}:\d{2}$/.test(str(r.time)) ? str(r.time) : '',
+  labels: r.labels === true,
+  dates: r.dates && typeof r.dates === 'object'
+    ? Object.fromEntries(Object.entries(r.dates as Record<string, unknown>).filter(([, v]) => typeof v === 'string').map(([k, v]) => [k, (v as string).slice(0, 40)]))
+    : {},
+});
+
 export const SERIES_COLORS: SeriesColor[] = ['indigo', 'sky', 'emerald', 'amber', 'rose', 'violet', 'slate'];
 
 export const newSeries = (s: Partial<Record<keyof Series, unknown>> = {}): Series => {
@@ -124,6 +134,8 @@ export const newSeries = (s: Partial<Record<keyof Series, unknown>> = {}): Serie
     memoryVerse: str(s.memoryVerse),
     leaderGuide: str(s.leaderGuide),
     design: s.design ? normalizeDesign(s.design) : undefined,
+    runs: Array.isArray(s.runs) ? s.runs.filter((r) => r && typeof r === 'object').map((r) => newRun(r as Partial<TeachingRun>)) : [],
+    printRun: str(s.printRun),
     designHistory: Array.isArray(s.designHistory)
       ? s.designHistory.slice(0, 20).filter((r) => r && typeof r === 'object').map((r) => ({ ...(r as DesignRevision), design: normalizeDesign((r as DesignRevision).design) }))
       : undefined,

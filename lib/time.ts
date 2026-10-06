@@ -47,6 +47,23 @@ export const buildSchedule = (service: Service): Record<string, string> => {
   return times;
 };
 
+// Minutes into the session for every visible section and part ("0:00", "0:04"…): used when there's no clock time.
+export const buildElapsed = (service: Service): Record<string, string> => {
+  let t = 0;
+  const fmt = (m: number) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+  const times: Record<string, string> = {};
+  for (const section of service.sections) {
+    if (section.hidden) continue;
+    times[section.id] = fmt(t);
+    for (const part of section.parts) {
+      if (part.hidden || part.optional) continue;
+      times[part.id] = fmt(t);
+      t += part.minutes || 0;
+    }
+  }
+  return times;
+};
+
 export const formatDate = (iso: string) => {
   const d = new Date(`${iso}T12:00:00`);
   return Number.isNaN(d.getTime())

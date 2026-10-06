@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Database, LayoutPack, Part, PrintScope, Series, Service } from '../types';
 import { clonePart, newPart, newSeries, newService } from '../lib/factory';
-import { migrateLegacySeries, reschedule, weeksOf } from '../lib/series';
+import { migrateLegacySeries, migrateRuns, reschedule, weeksOf } from '../lib/series';
 import { AISettings, loadSettings, saveSettings } from '../services/aiSettings';
 import { testConnection } from '../services/aiService';
 import { SAMPLE_LAYOUTS, SAMPLES, seriesFingerprint } from '../lib/samples';
@@ -72,10 +72,13 @@ const readDb = (): Database => {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const data = JSON.parse(raw);
-      const { services, series } = migrateLegacySeries(
+      const rawSeries: unknown[] = Array.isArray(data.series) ? data.series : [];
+      const legacy = migrateLegacySeries(
         Array.isArray(data.services) ? data.services : [],
-        Array.isArray(data.series) ? data.series.map(newSeries) : [],
+        rawSeries.map((x) => newSeries(x as Record<string, unknown>)),
       );
+      const { services } = legacy;
+      const series = migrateRuns(legacy.series, services, rawSeries);
       const layouts = Array.isArray(data.layouts) ? data.layouts.flatMap((l: unknown) => { try { return [readLayout(l)]; } catch { return []; } }) : [];
       return { version: 1, series, services, library: Array.isArray(data.library) ? data.library.map(newPart) : [], layouts };
     }
@@ -210,12 +213,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const updateSeries = useCallback((id: string, fn: (s: Series) => Series) => {
-    setDb((d) => {
-      const before = d.series.find((s) => s.id === id);
-      const next = { ...d, series: d.series.map((s) => (s.id === id ? { ...fn(s), updatedAt: Date.now() } : s)) };
-      const after = next.series.find((s) => s.id === id);
-      return before && after && before.startDate !== after.startDate ? reschedule(next, id) : next;
-    });
+    setDb((d) => ({ ...d, series: d.series.map((s) => (s.id === id ? { ...fn(s), updatedAt: Date.now() } : s)) }));
   }, []);
 
   const deleteSeries = useCallback((id: string) => {
@@ -275,10 +273,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Merge a backup or a single exported service. Existing ids are replaced.
   const importDatabase = useCallback((data: Partial<Database>) => {
-    const { services, series } = migrateLegacySeries(
+    const rawSeries: unknown[] = data.series ?? [];
+    const legacy = migrateLegacySeries(
       (data.services ?? []) as unknown as Record<string, unknown>[],
-      (data.series ?? []).map(newSeries),
+      rawSeries.map((x) => newSeries(x as Record<string, unknown>)),
     );
+    const { services } = legacy;
+    const series = migrateRuns(legacy.series, services, rawSeries);
     const library = (data.library ?? []).map(newPart);
     const layouts = (data.layouts ?? []).flatMap((l) => { try { return [readLayout(l)]; } catch { return []; } });
     setDb((d) => {

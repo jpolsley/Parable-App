@@ -82,7 +82,6 @@ export const NewSeriesDialog: React.FC<{ open: boolean; onClose: () => void }> =
   const { addSeries, aiSettings, toast } = useStore();
   const [title, setTitle] = useState('');
   const [audience, setAudience] = useState('Kids K–5');
-  const [startDate, setStartDate] = useState(todayISO());
   const [weeks, setWeeks] = useState(4);
   const [color, setColor] = useState<SeriesColor>('indigo');
   const [layout, setLayout] = useState('kids');
@@ -103,9 +102,9 @@ export const NewSeriesDialog: React.FC<{ open: boolean; onClose: () => void }> =
     if (useAI) {
       setProgress('Starting…');
       try {
-        const { series, weeks: drafted } = await draftSeries(aiSettings, { topic: topic.trim() || title.trim(), title: title.trim() || undefined, audience, weeks, startDate, color }, setProgress);
+        const { series, weeks: drafted } = await draftSeries(aiSettings, { topic: topic.trim() || title.trim(), title: title.trim() || undefined, audience, weeks, startDate: todayISO(), color }, setProgress);
         addSeries({ ...series, bigIdea: bigIdea.trim() || series.bigIdea }, drafted);
-        toast(`Drafted ${drafted.length} weeks of "${series.title}"`);
+        toast(`Drafted ${drafted.length} lessons of "${series.title}"`);
         onClose();
         navigate(`/series/${series.id}`);
       } catch (err) {
@@ -116,8 +115,8 @@ export const NewSeriesDialog: React.FC<{ open: boolean; onClose: () => void }> =
       return;
     }
     const template = TEMPLATES.find((t) => t.id === layout) ?? TEMPLATES[0];
-    const series = newSeries({ title: title.trim() || 'Untitled series', audience, startDate, color, bigIdea: bigIdea.trim() });
-    const drafts = Array.from({ length: weeks }, (_, i) => newService({ title: `Week ${i + 1}`, audience, sections: sectionsFromTemplate(template) }));
+    const series = newSeries({ title: title.trim() || 'Untitled series', audience, color, bigIdea: bigIdea.trim() });
+    const drafts = Array.from({ length: weeks }, (_, i) => newService({ title: `Lesson ${i + 1}`, audience, sections: sectionsFromTemplate(template) }));
     addSeries(series, drafts);
     onClose();
     navigate(`/series/${series.id}`);
@@ -136,13 +135,9 @@ export const NewSeriesDialog: React.FC<{ open: boolean; onClose: () => void }> =
             <AudienceInput id="ns-aud" value={audience} onChange={setAudience} />
           </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-[160px_110px_1fr] gap-3 items-end">
+        <div className="grid grid-cols-2 sm:grid-cols-[110px_1fr] gap-3 items-end">
           <div>
-            <Label htmlFor="ns-start">First week</Label>
-            <input id="ns-start" type="date" className={inputClass} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          </div>
-          <div>
-            <Label htmlFor="ns-weeks">Weeks</Label>
+            <Label htmlFor="ns-weeks">Lessons</Label>
             <input id="ns-weeks" type="number" min={1} max={16} className={inputClass} value={weeks} onChange={(e) => setWeeks(Math.min(16, Math.max(1, Number(e.target.value) || 1)))} />
           </div>
           <div className="col-span-2 sm:col-span-1">
@@ -152,21 +147,21 @@ export const NewSeriesDialog: React.FC<{ open: boolean; onClose: () => void }> =
         </div>
         <div>
           <Label htmlFor="ns-big">Series theme (optional)</Label>
-          <TextArea id="ns-big" minRows={2} value={bigIdea} onChange={(e) => setBigIdea(e.target.value)} placeholder="The one idea that ties every week together" />
+          <TextArea id="ns-big" minRows={2} value={bigIdea} onChange={(e) => setBigIdea(e.target.value)} placeholder="The one idea that ties every lesson together" />
         </div>
 
         {!useAI && (
           <div>
-            <Label>Weekly layout</Label>
+            <Label>Lesson layout</Label>
             <LayoutPicker value={layout} onChange={setLayout} />
-            <p className="text-xs text-gray-500 mt-2">Every week starts with this layout. You can change any week afterward.</p>
+            <p className="text-xs text-gray-500 mt-2">Every lesson starts with this layout. You can change any lesson afterward.</p>
           </div>
         )}
 
-        <AIToggle on={useAI} setOn={setUseAI} label="Have AI draft every week">
+        <AIToggle on={useAI} setOn={setUseAI} label="Have AI draft every lesson">
           <Label htmlFor="ns-topic">Topic or passage</Label>
           <input id="ns-topic" className={inputClass} value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. The Parables of Jesus" />
-          <p className="text-xs text-gray-500 mt-2">AI outlines the series, then writes each week with a hook, teaching, activity, and discussion. You can edit everything.</p>
+          <p className="text-xs text-gray-500 mt-2">AI outlines the series, then writes each lesson with a hook, teaching, activity, and discussion. You can edit everything.</p>
         </AIToggle>
 
         {progress && <p className="text-sm text-accent">{progress}</p>}
@@ -174,7 +169,7 @@ export const NewSeriesDialog: React.FC<{ open: boolean; onClose: () => void }> =
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>Cancel</Button>
           <Button type="submit" loading={loading} disabled={useAI && !(topic.trim() || title.trim())}>
-            {useAI ? 'Draft series' : `Create ${weeks} week${weeks === 1 ? '' : 's'}`}
+            {useAI ? 'Draft series' : `Create ${weeks} lesson${weeks === 1 ? '' : 's'}`}
           </Button>
         </div>
       </form>
@@ -191,7 +186,6 @@ export const NewServiceDialog: React.FC<{ open: boolean; onClose: () => void; se
   const lastWeek = weeks[weeks.length - 1];
   const [title, setTitle] = useState('');
   const [audience, setAudience] = useState('Kids K–5');
-  const [date, setDate] = useState(todayISO());
   const [layout, setLayout] = useState('kids');
   const [useAI, setUseAI] = useState(false);
   const [topic, setTopic] = useState('');
@@ -212,7 +206,7 @@ export const NewServiceDialog: React.FC<{ open: boolean; onClose: () => void; se
     e.preventDefault();
     setError('');
     const skeleton = layout === 'last' && lastWeek ? layoutOf(lastWeek) : sectionsFromTemplate(TEMPLATES.find((t) => t.id === layout) ?? TEMPLATES[0]);
-    let service = newService({ title: title.trim() || (series ? `Week ${weeks.length + 1}` : 'Untitled service'), audience, date, sections: skeleton });
+    let service = newService({ title: title.trim() || (series ? `Lesson ${weeks.length + 1}` : 'Untitled lesson'), audience, sections: skeleton });
     if (useAI && topic.trim()) {
       setLoading(true);
       try {
@@ -232,25 +226,19 @@ export const NewServiceDialog: React.FC<{ open: boolean; onClose: () => void; se
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={series ? `Add week ${weeks.length + 1} to ${series.title}` : 'New stand-alone service'} wide>
+    <Modal open={open} onClose={onClose} title={series ? `Add lesson ${weeks.length + 1} to ${series.title}` : 'New stand-alone lesson'} wide>
       <form onSubmit={create} className="space-y-5">
-        <div className={`grid grid-cols-1 gap-3 ${series ? 'sm:grid-cols-[1fr_180px]' : 'sm:grid-cols-[1fr_180px_160px]'}`}>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_180px]">
           <div>
             <Label htmlFor="n-title">Title</Label>
-            <input id="n-title" className={inputClass} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={series ? `Week ${weeks.length + 1}` : 'e.g. Christmas Family Service'} autoFocus />
+            <input id="n-title" className={inputClass} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={series ? `Lesson ${weeks.length + 1}` : 'e.g. Christmas Family Service'} autoFocus />
           </div>
           <div>
             <Label htmlFor="n-aud">Audience</Label>
             <AudienceInput id="n-aud" value={audience} onChange={setAudience} />
           </div>
-          {!series && (
-            <div>
-              <Label htmlFor="n-date">Date</Label>
-              <input id="n-date" type="date" className={inputClass} value={date} onChange={(e) => setDate(e.target.value)} />
-            </div>
-          )}
         </div>
-        {series && <p className="text-xs text-gray-500 -mt-2">This week is scheduled automatically, one week after the last.</p>}
+        {series && <p className="text-xs text-gray-500 -mt-2">This becomes lesson {weeks.length + 1} of the series.</p>}
 
         <div>
           <Label>Start from</Label>

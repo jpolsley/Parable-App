@@ -71,17 +71,9 @@ const Details: React.FC<{ service: Service; update: (fn: (s: Service) => Service
           <option value="">None (stand-alone)</option>
           {db.series.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
         </select>
-        {inSeries && <p className="text-xs text-gray-500 mt-1">Week {service.week}. The date follows the series schedule; change it on the series page.</p>}
+        {inSeries && <p className="text-xs text-gray-500 mt-1">Lesson {service.week}. Dates and start times are set when you teach the series ("When I teach it" on the series page).</p>}
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <Label htmlFor="d-date">Date</Label>
-          <input id="d-date" type="date" className={`${inputClass} disabled:bg-gray-50 disabled:text-gray-500`} value={service.date} disabled={inSeries} onChange={(e) => set('date', e.target.value)} />
-        </div>
-        <div>
-          <Label htmlFor="d-start">Start time</Label>
-          <input id="d-start" type="time" className={inputClass} value={service.startTime} onChange={(e) => set('startTime', e.target.value)} />
-        </div>
         <div>
           <Label htmlFor="d-size">Class size</Label>
           <input id="d-size" type="number" min={0} className={inputClass} value={service.classSize} onChange={(e) => set('classSize', Math.max(0, Number(e.target.value) || 0))} />

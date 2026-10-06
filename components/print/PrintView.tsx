@@ -6,8 +6,8 @@ import { MotifLayer, PageMark } from './Motifs';
 import { fillCustom, fitText, scopeCss, scopeId } from '../../lib/customPage';
 import { PART_TYPES } from '../../lib/partTypes';
 import { aggregateSupplies, supplyTotal } from '../../lib/supplies';
-import { buildSchedule, formatClock, formatDate, formatDuration, sectionMinutes, serviceMinutes, visibleParts } from '../../lib/time';
-import { weeksOf } from '../../lib/series';
+import { buildElapsed, buildSchedule, formatClock, formatDuration, sectionMinutes, serviceMinutes, visibleParts } from '../../lib/time';
+import { forPrint, formatWhen, weeksOf } from '../../lib/series';
 import { cueSegments, listItems, looksLikeList, paragraphs, stripCues } from '../../lib/text';
 import { qrPath } from '../../lib/qr';
 import { useStore } from '../../store/StoreContext';
@@ -42,6 +42,14 @@ const PageStyle: React.FC<{ footer: string; series?: Series }> = ({ footer, seri
     @page cover { margin: 0; @bottom-left { content: none; } @bottom-right { content: none; } }
   `}</style>
 );
+
+// "Sun, Oct 4, 2026 – Sun, Nov 1, 2026" from the printed run, or '' when printing without dates.
+const dateRange = (weeks: Service[]) => {
+  const first = weeks[0]?.date ?? '';
+  const last = weeks[weeks.length - 1]?.date ?? '';
+  if (!first && !last) return '';
+  return first === last || !last ? formatWhen(first) : !first ? formatWhen(last) : `${formatWhen(first)} – ${formatWhen(last)}`;
+};
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 const clockRange = (service: Service) => {
@@ -85,7 +93,9 @@ export const PrintRoot: React.FC = () => {
 type SeriesKind = 'series-book' | 'series' | 'series-small' | 'series-family' | 'series-takehome';
 
 // Everything a series prints: the book (cover, leader guide, every week) or one kind of page for every week.
-const SeriesBook: React.FC<{ kind: SeriesKind | string; series: Series; weeks: Service[] }> = ({ kind, series, weeks }) => (
+const SeriesBook: React.FC<{ kind: SeriesKind | string; series: Series; weeks: Service[] }> = ({ kind, series, weeks: lessons }) => {
+  const weeks = forPrint(series, lessons);
+  return (
   <>
     {(kind === 'series-book' || kind === 'series') && (
       <>
@@ -99,7 +109,8 @@ const SeriesBook: React.FC<{ kind: SeriesKind | string; series: Series; weeks: S
     {kind === 'series-family' && weeks.map((w) => <FamilyPage key={w.id} service={w} series={series} />)}
     {kind === 'series-takehome' && weeks.map((w) => <TakeHome key={w.id} service={w} series={series} />)}
   </>
-);
+  );
+};
 
 // The whole printed book on screen, page by page, in the series' design.
 export const BookPreview: React.FC<{ series: Series; weeks: Service[]; onPartClick?: (partId: string) => void }> = ({ series, weeks, onPartClick }) => {
@@ -118,7 +129,8 @@ export const BookPreview: React.FC<{ series: Series; weeks: Service[]; onPartCli
   );
 };
 
-const ServiceScope: React.FC<{ scope: PrintScope; service: Service; series?: Series }> = ({ scope, service, series }) => {
+const ServiceScope: React.FC<{ scope: PrintScope; service: Service; series?: Series }> = ({ scope, service: lesson, series }) => {
+  const [service] = forPrint(series, [lesson]);
   const schedule = buildSchedule(service);
   switch (scope.kind) {
     case 'week':
@@ -170,7 +182,7 @@ export const PrintPreview: React.FC<{ service: Service; series?: Series; kind: P
       {empty ? <p className="pv-empty">{empty}</p> : (
         <div className="pr pr-preview" {...theme(series)} style={{ ...designVars(designOf(series)), zoom }} onClick={onClick}>
         <LayoutCss series={series} />
-          {kind === 'week' ? <FullWeek service={service} series={series} divider /> : <ServiceScope scope={{ kind }} service={service} series={series} />}
+          {kind === 'week' ? <FullWeek service={forPrint(series, [service])[0]} series={series} divider /> : <ServiceScope scope={{ kind }} service={service} series={series} />}
         </div>
       )}
     </div>
@@ -203,7 +215,7 @@ export const DesignPreview: React.FC<{ series: Series; weeks: Service[] }> = ({ 
       <div className="pr pr-preview" {...theme(series)} style={{ ...designVars(designOf(series)), zoom }}>
         <LayoutCss series={series} />
         <SeriesCover series={series} weeks={weeks} />
-        {first && <FullWeek service={first} series={series} divider />}
+        {first && <FullWeek service={forPrint(series, [first])[0]} series={series} divider />}
       </div>
     </div>
   );
@@ -222,6 +234,16 @@ export const LayoutThumb: React.FC<{ pack: LayoutPack; series: Series; weeks: Se
     </div>
   );
 };
+
+// A series' own cover, drawn small, for the shelf.
+export const CoverThumb: React.FC<{ series: Series; weeks: Service[]; width?: number }> = ({ series, weeks, width = 180 }) => (
+  <div className="overflow-hidden bg-white" style={{ width, height: (width * 11) / 8.5 }} aria-hidden="true">
+    <div className="pr pr-preview pr-thumb" {...theme(series)} style={{ ...designVars(designOf(series)), zoom: width / SHEET_PX }}>
+      <LayoutCss series={series} />
+      <SeriesCover series={series} weeks={weeks} />
+    </div>
+  </div>
+);
 
 // ---------- Series ----------
 
@@ -288,7 +310,8 @@ const CustomPage: React.FC<{ kind: 'cover' | 'divider'; series?: Series; values:
   );
 };
 
-const SeriesCover: React.FC<{ series: Series; weeks: Service[] }> = ({ series, weeks }) => {
+const SeriesCover: React.FC<{ series: Series; weeks: Service[] }> = ({ series, weeks: lessons }) => {
+  const weeks = forPrint(series, lessons);
   const sf = designOf(series).cover;
   if (designOf(series).custom.cover) {
     return (
@@ -299,7 +322,7 @@ const SeriesCover: React.FC<{ series: Series; weeks: Service[] }> = ({ series, w
           title: series.title,
           subtitle: series.bigIdea || series.description,
           eyebrow: `${weeks.length}-week series · ${series.audience}`,
-          dates: weeks.length ? `${formatDate(weeks[0].date)} – ${formatDate(weeks[weeks.length - 1].date)}` : '',
+          dates: dateRange(weeks),
           weeks: pad2(weeks.length),
           audience: series.audience,
           verse: series.memoryVerse,
@@ -330,7 +353,7 @@ const SeriesCover: React.FC<{ series: Series; weeks: Service[] }> = ({ series, w
       {sf.titleBox === 'none' ? label : <div className="pr-title-box">{label}</div>}
       <div className="pr-cover-foot">
         <div className="pr-cover-meta">
-          {weeks.length > 0 && <div><span>Dates</span><b>{formatDate(weeks[0].date)} – {formatDate(weeks[weeks.length - 1].date)}</b></div>}
+          {dateRange(weeks) && <div><span>Dates</span><b>{dateRange(weeks)}</b></div>}
           <div><span>Leader guide</span><b>{series.audience}</b></div>
         </div>
         {series.memoryVerse && <div className="pr-cover-verse pr-serif"><span>Memory verse</span>{series.memoryVerse}</div>}
@@ -401,7 +424,7 @@ const LeaderGuide: React.FC<{ series: Series; weeks: Service[] }> = ({ series, w
             <h3>{w.title}</h3>
             {w.bigIdea && <p className="idea pr-serif">{w.bigIdea}</p>}
           </div>
-          <div className="when"><b>{formatDate(w.date)}</b>{w.scripture}</div>
+          <div className="when">{w.date && <b>{formatWhen(w.date)}</b>}{w.scripture}</div>
         </li>
       ))}
     </ol>
@@ -418,7 +441,7 @@ const FullWeek: React.FC<{ service: Service; series?: Series; divider?: boolean 
         series={series}
         uid={`wk-${service.id}`}
         icon={Compass}
-        kicker={series ? `${series.title} · ${formatDate(service.date)}` : formatDate(service.date)}
+        kicker={[series?.title, formatWhen(service.date)].filter(Boolean).join(' · ') || service.audience}
         title={service.week ? `Week ${service.week}` : service.title}
         sub={service.week ? service.title : service.scripture}
         idea={service.bigIdea}
@@ -540,14 +563,16 @@ const SessionPlan: React.FC<{ service: Service; series?: Series }> = ({ service,
 };
 
 // Every part at a glance with a blank column for the leader's own timing.
-const SessionOverview: React.FC<{ service: Service; series?: Series; schedule: Record<string, string> }> = ({ service, series, schedule }) => {
+const SessionOverview: React.FC<{ service: Service; series?: Series; schedule: Record<string, string> }> = ({ service, series, schedule: clock }) => {
+  const timed = Object.keys(clock).length > 0;
+  const schedule = timed ? clock : buildElapsed(service);
   const sections = service.sections.filter((s) => !s.hidden && visibleParts(s).length > 0);
   return (
     <section className="pr-overview pr-page">
       <PageHead service={service} series={series} kicker="Session overview" title={service.title} right={<div className="pr-head-right"><span>Total</span><b className="pr-serif">{formatDuration(serviceMinutes(service))}{clockRange(service) && ` · ${clockRange(service)}`}</b></div>} />
       <table className="pr-ov">
         <thead>
-          <tr><th /><th /><th>Part</th><th>Starts</th><th className="r">Approx.</th><th className="r">My time</th></tr>
+          <tr><th /><th /><th>Part</th><th>{timed ? 'Starts' : 'At'}</th><th className="r">Approx.</th><th className="r">My time</th></tr>
         </thead>
         {sections.map((section) => {
           const parts = visibleParts(section);
@@ -892,7 +917,7 @@ const MiniHeader: React.FC<{ service: Service; series?: Series; title: string; e
       <p className="pr-eyebrow">{eyebrow ?? (series ? `${series.title} · Week ${service.week}` : service.title)}</p>
       <h1>{title}</h1>
     </div>
-    <div className="r"><b>{formatDate(service.date)}</b>{clockRange(service) || formatDuration(serviceMinutes(service))}</div>
+    <div className="r">{service.date && <b>{formatWhen(service.date)}</b>}{clockRange(service) || formatDuration(serviceMinutes(service))}</div>
   </header>
 );
 

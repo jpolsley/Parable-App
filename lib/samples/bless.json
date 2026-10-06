@@ -9,10 +9,12 @@
       "color": "emerald",
       "startDate": "2026-10-04",
       "bigIdea": "God uses the unlikely to accomplish the impossible, and He invites us to join in.",
-      "memoryVerse": "I will bless you… and you will be a blessing. (Genesis 12:2)",
-      "leaderGuide": "Thank you for leading B.L.E.S.S. Over five weeks, students learn five everyday practices for joining what God is already doing: Begin with prayer, Listen with care, Eat together, Serve with love, and Share the story. It all starts with God's promise to Abraham: \"I will bless you… and you will be a blessing.\"\n\nOne practice runs through every week. In week 1, each student writes three names on a BLESS card, and every week the group prays for those names together, adding one step at a time. Each week also uses the same study method: Read it, Sit in it, Live it.\n\nBeing known matters more than being impressive. Pray for each student by name before you arrive. Listen more than you talk; \"I don't know, I wonder too\" is a faithful answer. Notice the student who is here but not included, and sit with them. When a student questions or doubts, stay calm, stay close, and follow up one-on-one. Some students need help seeing hope; others need someone to stay with them in the pain. Behavior can be a response to something hard, so respond calmly.\n\nIf a student shares abuse, self-harm, or that they are not safe, follow the church's safety policy and tell the youth pastor the same day. Never promise to keep it secret.",
+      "memoryVerse": "I will bless you\u2026 and you will be a blessing. (Genesis 12:2)",
+      "leaderGuide": "Thank you for leading B.L.E.S.S. Over five weeks, students learn five everyday practices for joining what God is already doing: Begin with prayer, Listen with care, Eat together, Serve with love, and Share the story. It all starts with God's promise to Abraham: \"I will bless you\u2026 and you will be a blessing.\"\n\nOne practice runs through every week. In week 1, each student writes three names on a BLESS card, and every week the group prays for those names together, adding one step at a time. Each week also uses the same study method: Read it, Sit in it, Live it.\n\nBeing known matters more than being impressive. Pray for each student by name before you arrive. Listen more than you talk; \"I don't know, I wonder too\" is a faithful answer. Notice the student who is here but not included, and sit with them. When a student questions or doubts, stay calm, stay close, and follow up one-on-one. Some students need help seeing hope; others need someone to stay with them in the pain. Behavior can be a response to something hard, so respond calmly.\n\nIf a student shares abuse, self-harm, or that they are not safe, follow the church's safety policy and tell the youth pastor the same day. Never promise to keep it secret.",
       "createdAt": 1790726400000,
-      "updatedAt": 1791158400000
+      "updatedAt": 1791158400000,
+      "runs": [],
+      "printRun": ""
     }
   ],
   "services": [
@@ -35,7 +37,7 @@
       "createdAt": 1790726400000,
       "updatedAt": 1791158400000,
       "title": "Begin With Prayer",
-      "scripture": "Colossians 1:3–12",
+      "scripture": "Colossians 1:3\u201312",
       "keyVerse": "For this reason, since the day we heard about you, we have not stopped praying for you. (Colossians 1:9)",
       "bigIdea": "Before we try to reach people, we pray for them, and prayer is an ongoing conversation with a God who already loves them.",
       "objectives": "Name the people God has placed in their life using FRANCS\nChoose three people and pray for them together\nDescribe prayer as an ongoing conversation with God, not a one-time wish list",
@@ -50,7 +52,7 @@
               "title": "Welcome",
               "type": "script",
               "minutes": 4,
-              "instructions": "Same rhythm every week:\n\n• At the door: greet every student by name. If you don't know a name yet, ask, and use it tonight.\n• Newcomers: introduce each new student to a host student (chosen ahead of time) who sits with them, introduces them to their small group leader, and walks with them to group.\n• Check-in: everyone answers one quick question with a word or a thumbs up, sideways, or down. Anyone can pass.",
+              "instructions": "Same rhythm every week:\n\n\u2022 At the door: greet every student by name. If you don't know a name yet, ask, and use it tonight.\n\u2022 Newcomers: introduce each new student to a host student (chosen ahead of time) who sits with them, introduces them to their small group leader, and walks with them to group.\n\u2022 Check-in: everyone answers one quick question with a word or a thumbs up, sideways, or down. Anyone can pass.",
               "script": "Welcome in! If this is your first time here, we're really glad you came. [Point out the host students.] These friends will hang out with you tonight so you're not on your own.\n\nTonight we start a new series called B.L.E.S.S. Five weeks, five simple ways to join what God is already doing in the people around you.\n\nYou don't have to leave anything at the door tonight. Bring your worries, your questions, your good news, all of it. God can handle every bit of it.\n\nQuick check-in: What's your phone battery at right now? [Students can hold up fingers: 1 for almost dead, 5 for full.] [Take a few answers. Anyone can pass.]"
             },
             {
@@ -98,15 +100,15 @@
             },
             {
               "id": "bless-p-8",
-              "title": "Read: Colossians 1:3–12",
+              "title": "Read: Colossians 1:3\u201312",
               "type": "bible-verse",
               "minutes": 3,
-              "instructions": "Have your student reader read Colossians 1:3–12 aloud from a Bible or a Bible app. Everyone else can follow along on a phone or a printed copy.",
+              "instructions": "Have your student reader read Colossians 1:3\u201312 aloud from a Bible or a Bible app. Everyone else can follow along on a phone or a printed copy.",
               "leaderNotes": "Student role: by midweek, ask a student to read the passage and send it to them so they can practice. Thank them by name afterward."
             },
             {
               "id": "bless-p-9",
-              "title": "Read It · Sit In It · Live It",
+              "title": "Read It \u00b7 Sit In It \u00b7 Live It",
               "type": "discussion",
               "minutes": 6,
               "instructions": "Walk through the passage together with the same three moves every week. Take a few answers for each. There are no wrong answers to \"Sit in it.\"",
@@ -124,7 +126,7 @@
               "title": "Point 1: Prayer is a conversation, not a one-time wish list",
               "type": "script",
               "minutes": 5,
-              "script": "[Ask first:] Has anyone ever prayed about something once and then completely forgot about it? [Take a few answers. Laugh with them; everybody has.]\n\nLook at the repetition: \"We always thank God… when we pray\" (v. 3). \"We have not stopped praying for you\" (v. 9). \"We continually ask\" (v. 9).\n\nPrayer isn't a vending machine where you put in a request and wait for the snack to drop. It's more like a group chat that stays open all day. You keep coming back to it because you're in a relationship with the person on the other end.\n\nThat's what Christians believe prayer is: talking with Jesus, who already loves you and already loves the people you're praying for even more than you do."
+              "script": "[Ask first:] Has anyone ever prayed about something once and then completely forgot about it? [Take a few answers. Laugh with them; everybody has.]\n\nLook at the repetition: \"We always thank God\u2026 when we pray\" (v. 3). \"We have not stopped praying for you\" (v. 9). \"We continually ask\" (v. 9).\n\nPrayer isn't a vending machine where you put in a request and wait for the snack to drop. It's more like a group chat that stays open all day. You keep coming back to it because you're in a relationship with the person on the other end.\n\nThat's what Christians believe prayer is: talking with Jesus, who already loves you and already loves the people you're praying for even more than you do."
             },
             {
               "id": "bless-p-14",
@@ -145,7 +147,7 @@
                   "per": "total"
                 }
               ],
-              "script": "[Hold up the gift card in one hand and the plant in the other.] If someone offered you one of these, which would you take? [Most will pick the gift card.]\n\nPaul doesn't pray for the Colossians to get stuff. He prays they'd be \"bearing fruit… growing in the knowledge of God\" (v. 10). The gospel itself is \"bearing fruit and growing throughout the whole world\" (v. 6).\n\nA gift card is fun for a day. A plant keeps growing. When we pray for our friends, we're not just asking God to fix their week. We're asking God to grow something real in them: peace, hope, and knowing Jesus."
+              "script": "[Hold up the gift card in one hand and the plant in the other.] If someone offered you one of these, which would you take? [Most will pick the gift card.]\n\nPaul doesn't pray for the Colossians to get stuff. He prays they'd be \"bearing fruit\u2026 growing in the knowledge of God\" (v. 10). The gospel itself is \"bearing fruit and growing throughout the whole world\" (v. 6).\n\nA gift card is fun for a day. A plant keeps growing. When we pray for our friends, we're not just asking God to fix their week. We're asking God to grow something real in them: peace, hope, and knowing Jesus."
             },
             {
               "id": "bless-p-15",
@@ -186,7 +188,7 @@
                   "per": "person"
                 }
               ],
-              "instructions": "FRANCS helps students notice the people God has placed around them. Give everyone paper and a pen. Read each category and give a moment to write names:\n\n• Friends: Who do you choose to spend time with?\n• Relatives: Who is in your family, near or far?\n• Acquaintances: Who do you cross paths with regularly?\n• Neighbors: Who lives near you?\n• Classmates: Who do you see in class, at lunch, on the bus, or at practice?\n• Strangers: Who do you pass often but have never really met?\n\nThen hand out an index card to each student. This is their BLESS card. Ask them to choose three names from their map and write them on the card. Suggest they keep it in a phone case, wallet, or planner. They'll use it every week."
+              "instructions": "FRANCS helps students notice the people God has placed around them. Give everyone paper and a pen. Read each category and give a moment to write names:\n\n\u2022 Friends: Who do you choose to spend time with?\n\u2022 Relatives: Who is in your family, near or far?\n\u2022 Acquaintances: Who do you cross paths with regularly?\n\u2022 Neighbors: Who lives near you?\n\u2022 Classmates: Who do you see in class, at lunch, on the bus, or at practice?\n\u2022 Strangers: Who do you pass often but have never really met?\n\nThen hand out an index card to each student. This is their BLESS card. Ask them to choose three names from their map and write them on the card. Suggest they keep it in a phone case, wallet, or planner. They'll use it every week."
             },
             {
               "id": "bless-p-22",
@@ -231,8 +233,8 @@
               "title": "Discussion",
               "type": "discussion",
               "minutes": 12,
-              "script": "1. Has anyone ever told you they were praying for you? What was that like?\n2. In verses 9–12, what does Paul ask God for? I wonder why he prays for growth instead of an easy life.\n3. What makes prayer hard for you, or makes it hard to believe God is listening?\n4. Where did you see God this week? Where did God feel far away?\n5. Who are your three names? Share first names, why you chose them, or keep it private.",
-              "leaderNotes": "• Affirm before adding your view, don't correct the first answer, never require anyone to talk, and bring the group back to the passage.\n• If someone says prayer feels pointless, thank them for being honest, remember Epaphras \"wrestling,\" and follow up this week."
+              "script": "1. Has anyone ever told you they were praying for you? What was that like?\n2. In verses 9\u201312, what does Paul ask God for? I wonder why he prays for growth instead of an easy life.\n3. What makes prayer hard for you, or makes it hard to believe God is listening?\n4. Where did you see God this week? Where did God feel far away?\n5. Who are your three names? Share first names, why you chose them, or keep it private.",
+              "leaderNotes": "\u2022 Affirm before adding your view, don't correct the first answer, never require anyone to talk, and bring the group back to the passage.\n\u2022 If someone says prayer feels pointless, thank them for being honest, remember Epaphras \"wrestling,\" and follow up this week."
             },
             {
               "id": "bless-p-27",
@@ -264,7 +266,7 @@
       "createdAt": 1790726400000,
       "updatedAt": 1791158400000,
       "title": "Listen With Care",
-      "scripture": "Acts 8:26–38",
+      "scripture": "Acts 8:26\u201338",
       "keyVerse": "Then Philip began with that very passage of Scripture and told him the good news about Jesus. (Acts 8:35)",
       "bigIdea": "We listen to God and to people, notice where God is already working, and join Him.",
       "objectives": "Notice and follow the Holy Spirit's nudges\nPractice listening to understand before trying to fix\nSee that Jesus goes looking for people who feel like outsiders",
@@ -279,7 +281,7 @@
               "title": "Welcome",
               "type": "script",
               "minutes": 4,
-              "instructions": "Same rhythm every week:\n\n• At the door: greet every student by name. If you don't know a name yet, ask, and use it tonight.\n• Newcomers: introduce each new student to a host student (chosen ahead of time) who sits with them, introduces them to their small group leader, and walks with them to group.\n• Check-in: everyone answers one quick question with a word or a thumbs up, sideways, or down. Anyone can pass.",
+              "instructions": "Same rhythm every week:\n\n\u2022 At the door: greet every student by name. If you don't know a name yet, ask, and use it tonight.\n\u2022 Newcomers: introduce each new student to a host student (chosen ahead of time) who sits with them, introduces them to their small group leader, and walks with them to group.\n\u2022 Check-in: everyone answers one quick question with a word or a thumbs up, sideways, or down. Anyone can pass.",
               "script": "Welcome in! If this is your first time here, we're really glad you came. [Point out the host students.] These friends will hang out with you tonight so you're not on your own.\n\nYou don't have to leave anything at the door tonight. Bring your worries, your questions, your good news, all of it. God can handle every bit of it.\n\nQuick check-in: One word for your week so far. [Take a few answers. Anyone can pass.]"
             },
             {
@@ -333,15 +335,15 @@
             },
             {
               "id": "bless-p-37",
-              "title": "Read: Acts 8:26–38",
+              "title": "Read: Acts 8:26\u201338",
               "type": "bible-verse",
               "minutes": 4,
               "leaderNotes": "Student role: by midweek, ask a student to read the passage and send it to them to practice.",
-              "script": "Now an angel of the Lord said to Philip, \"Go south to the road—the desert road—that goes down from Jerusalem to Gaza.\" So he started out, and on his way he met an Ethiopian eunuch, an important official in charge of all the treasury of the Kandake (which means \"queen of the Ethiopians\"). This man had gone to Jerusalem to worship, and on his way home was sitting in his chariot reading the Book of Isaiah the prophet. The Spirit told Philip, \"Go to that chariot and stay near it.\"\n\nThen Philip ran up to the chariot and heard the man reading Isaiah the prophet. \"Do you understand what you are reading?\" Philip asked.\n\n\"How can I,\" he said, \"unless someone explains it to me?\" So he invited Philip to come up and sit with him.\n\nThis is the passage of Scripture the eunuch was reading: \"He was led like a sheep to the slaughter, and as a lamb before its shearer is silent, so he did not open his mouth. In his humiliation he was deprived of justice. Who can speak of his descendants? For his life was taken from the earth.\"\n\nThe eunuch asked Philip, \"Tell me, please, who is the prophet talking about, himself or someone else?\" Then Philip began with that very passage of Scripture and told him the good news about Jesus. As they traveled along the road, they came to some water and the eunuch said, \"Look, here is water. What can stand in the way of my being baptized?\" And he gave orders to stop the chariot. Then both Philip and the eunuch went down into the water and Philip baptized him."
+              "script": "Now an angel of the Lord said to Philip, \"Go south to the road\u2014the desert road\u2014that goes down from Jerusalem to Gaza.\" So he started out, and on his way he met an Ethiopian eunuch, an important official in charge of all the treasury of the Kandake (which means \"queen of the Ethiopians\"). This man had gone to Jerusalem to worship, and on his way home was sitting in his chariot reading the Book of Isaiah the prophet. The Spirit told Philip, \"Go to that chariot and stay near it.\"\n\nThen Philip ran up to the chariot and heard the man reading Isaiah the prophet. \"Do you understand what you are reading?\" Philip asked.\n\n\"How can I,\" he said, \"unless someone explains it to me?\" So he invited Philip to come up and sit with him.\n\nThis is the passage of Scripture the eunuch was reading: \"He was led like a sheep to the slaughter, and as a lamb before its shearer is silent, so he did not open his mouth. In his humiliation he was deprived of justice. Who can speak of his descendants? For his life was taken from the earth.\"\n\nThe eunuch asked Philip, \"Tell me, please, who is the prophet talking about, himself or someone else?\" Then Philip began with that very passage of Scripture and told him the good news about Jesus. As they traveled along the road, they came to some water and the eunuch said, \"Look, here is water. What can stand in the way of my being baptized?\" And he gave orders to stop the chariot. Then both Philip and the eunuch went down into the water and Philip baptized him."
             },
             {
               "id": "bless-p-38",
-              "title": "Read It · Sit In It · Live It",
+              "title": "Read It \u00b7 Sit In It \u00b7 Live It",
               "type": "discussion",
               "minutes": 6,
               "instructions": "Walk through the passage together with the same three moves every week. Take a few answers for each. There are no wrong answers to \"Sit in it.\"",
@@ -373,7 +375,7 @@
               "title": "Point 3: Jesus goes looking for outsiders",
               "type": "script",
               "minutes": 5,
-              "script": "Here's something that's easy to miss. This man traveled hundreds of miles to worship God, and he couldn't fully get in. The law of that time kept eunuchs out of the inner courts of the temple (Deuteronomy 23:1). That's a hard part of this story, and it's okay to say it hurts to read.\n\nBut a few chapters after the passage he was reading, Isaiah promises that eunuchs who love God will have \"a name better than sons and daughters\" in God's house (Isaiah 56:4–5). Then Philip \"began with that very passage… and told him the good news about Jesus.\"\n\nJesus sent someone running down a desert road for one outsider. Christians believe that Jesus, the lamb in Isaiah's words, gave his life so that nobody would be left outside. The man's question, \"What can stand in the way?\", has an answer: on Jesus's side, nothing. Whatever you're carrying tonight, Jesus welcomes you."
+              "script": "Here's something that's easy to miss. This man traveled hundreds of miles to worship God, and he couldn't fully get in. The law of that time kept eunuchs out of the inner courts of the temple (Deuteronomy 23:1). That's a hard part of this story, and it's okay to say it hurts to read.\n\nBut a few chapters after the passage he was reading, Isaiah promises that eunuchs who love God will have \"a name better than sons and daughters\" in God's house (Isaiah 56:4\u20135). Then Philip \"began with that very passage\u2026 and told him the good news about Jesus.\"\n\nJesus sent someone running down a desert road for one outsider. Christians believe that Jesus, the lamb in Isaiah's words, gave his life so that nobody would be left outside. The man's question, \"What can stand in the way?\", has an answer: on Jesus's side, nothing. Whatever you're carrying tonight, Jesus welcomes you."
             }
           ]
         },
@@ -426,7 +428,7 @@
               "type": "discussion",
               "minutes": 12,
               "script": "1. Last week we started praying for three names. What did you notice, in them or in you?\n2. Philip listened to the Spirit, to the man, and to Scripture. Which is easiest for you? Which is hardest?\n3. I wonder why Isaiah's words about a lamb opened the door for this man. What do you think?\n4. What's hard to believe about God speaking to people today?\n5. Where did you see God this week? Where did God feel far away?",
-              "leaderNotes": "• Affirm before adding your view, don't correct the first answer, never require anyone to talk, and bring the group back to the passage.\n• Question 1 follows up last week's challenge. Celebrate small things, and make it normal if nothing seemed to happen."
+              "leaderNotes": "\u2022 Affirm before adding your view, don't correct the first answer, never require anyone to talk, and bring the group back to the passage.\n\u2022 Question 1 follows up last week's challenge. Celebrate small things, and make it normal if nothing seemed to happen."
             },
             {
               "id": "bless-p-50",
@@ -458,7 +460,7 @@
       "createdAt": 1790726400000,
       "updatedAt": 1791158400000,
       "title": "Eat Together",
-      "scripture": "Luke 5:27–32",
+      "scripture": "Luke 5:27\u201332",
       "keyVerse": "It is not the healthy who need a doctor, but the sick. (Luke 5:31)",
       "bigIdea": "Jesus used meals to show people they belonged before they had it all together, and we get to do the same.",
       "objectives": "See how powerful a real invitation can be\nNotice who is left out and move toward them\nPractice being fully present with the people around them",
@@ -473,7 +475,7 @@
               "title": "Welcome",
               "type": "script",
               "minutes": 4,
-              "instructions": "Same rhythm every week:\n\n• At the door: greet every student by name. If you don't know a name yet, ask, and use it tonight.\n• Newcomers: introduce each new student to a host student (chosen ahead of time) who sits with them, introduces them to their small group leader, and walks with them to group.\n• Check-in: everyone answers one quick question with a word or a thumbs up, sideways, or down. Anyone can pass.",
+              "instructions": "Same rhythm every week:\n\n\u2022 At the door: greet every student by name. If you don't know a name yet, ask, and use it tonight.\n\u2022 Newcomers: introduce each new student to a host student (chosen ahead of time) who sits with them, introduces them to their small group leader, and walks with them to group.\n\u2022 Check-in: everyone answers one quick question with a word or a thumbs up, sideways, or down. Anyone can pass.",
               "script": "Welcome in! If this is your first time here, we're really glad you came. [Point out the host students.] These friends will hang out with you tonight so you're not on your own.\n\nYou don't have to leave anything at the door tonight. Bring your worries, your questions, your good news, all of it. God can handle every bit of it.\n\nQuick check-in: What did you eat for lunch today? [Thumbs up or down on how it was.] [Take a few answers. Anyone can pass.]"
             },
             {
@@ -507,7 +509,7 @@
             },
             {
               "id": "bless-p-57",
-              "title": "Read: Luke 5:27–32",
+              "title": "Read: Luke 5:27\u201332",
               "type": "bible-verse",
               "minutes": 3,
               "leaderNotes": "Student role: by midweek, ask a student to read the passage and send it to them to practice.",
@@ -515,7 +517,7 @@
             },
             {
               "id": "bless-p-58",
-              "title": "Read It · Sit In It · Live It",
+              "title": "Read It \u00b7 Sit In It \u00b7 Live It",
               "type": "discussion",
               "minutes": 6,
               "instructions": "Walk through the passage together with the same three moves every week. Take a few answers for each. There are no wrong answers to \"Sit in it.\"",
@@ -613,7 +615,7 @@
               "type": "discussion",
               "minutes": 12,
               "script": "1. Last week you asked someone a real question. What did you hear?\n2. Has someone ever invited you in when you felt like an outsider? What did it do for you?\n3. Why do you think Levi's first move was to throw a party for his friends?\n4. I wonder which table Jesus would sit at in our cafeteria. Why that one?\n5. What's hard to believe about Jesus wanting to eat with messy people, including you?\n6. Where did you see God this week? Where did God feel far away?",
-              "leaderNotes": "• Affirm before adding your view, don't correct the first answer, never require anyone to talk, and bring the group back to the passage.\n• Open the snacks and pass them around before the questions, so the group eats together while they talk (check for allergies). Some students rarely get family meals; keep the challenge simple and free."
+              "leaderNotes": "\u2022 Affirm before adding your view, don't correct the first answer, never require anyone to talk, and bring the group back to the passage.\n\u2022 Open the snacks and pass them around before the questions, so the group eats together while they talk (check for allergies). Some students rarely get family meals; keep the challenge simple and free."
             },
             {
               "id": "bless-p-72",
@@ -645,7 +647,7 @@
       "createdAt": 1790726400000,
       "updatedAt": 1791158400000,
       "title": "Serve With Love",
-      "scripture": "Matthew 25:31–46",
+      "scripture": "Matthew 25:31\u201346",
       "keyVerse": "Truly I tell you, whatever you did for one of the least of these brothers and sisters of mine, you did for me. (Matthew 25:40)",
       "bigIdea": "Serving with love means being a real friend alongside someone, not treating them like a project to fix.",
       "objectives": "See that God values every person equally\nRecognize Jesus in the people the world overlooks\nChoose to serve with someone, not just for them",
@@ -660,7 +662,7 @@
               "title": "Welcome",
               "type": "script",
               "minutes": 4,
-              "instructions": "Same rhythm every week:\n\n• At the door: greet every student by name. If you don't know a name yet, ask, and use it tonight.\n• Newcomers: introduce each new student to a host student (chosen ahead of time) who sits with them, introduces them to their small group leader, and walks with them to group.\n• Check-in: everyone answers one quick question with a word or a thumbs up, sideways, or down. Anyone can pass.",
+              "instructions": "Same rhythm every week:\n\n\u2022 At the door: greet every student by name. If you don't know a name yet, ask, and use it tonight.\n\u2022 Newcomers: introduce each new student to a host student (chosen ahead of time) who sits with them, introduces them to their small group leader, and walks with them to group.\n\u2022 Check-in: everyone answers one quick question with a word or a thumbs up, sideways, or down. Anyone can pass.",
               "script": "Welcome in! If this is your first time here, we're really glad you came. [Point out the host students.] These friends will hang out with you tonight so you're not on your own.\n\nLast week's challenge was to share a table. Did anyone eat with someone new? [Take one or two quick stories.]\n\nYou don't have to leave anything at the door tonight. Bring your worries, your questions, your good news, all of it. God can handle every bit of it.\n\nQuick check-in: High or low: what was the best part and the hardest part of your week? [One word each. Anyone can pass.] [Take a few answers. Anyone can pass.]"
             },
             {
@@ -677,7 +679,7 @@
                 },
                 {
                   "id": "bless-x-76",
-                  "name": "Paper slips (2.5\" × 0.75\") with \"winner\" written in pencil",
+                  "name": "Paper slips (2.5\" \u00d7 0.75\") with \"winner\" written in pencil",
                   "qty": 1,
                   "per": "group"
                 },
@@ -688,8 +690,8 @@
                   "per": "total"
                 }
               ],
-              "instructions": "The setup: Write \"winner\" on a slip of paper and place it face-down at the bottom of each box of playing cards, under the cards. Prepare one box per group of 4–8.\n\nGive a prepared box to each group. Everyone in the group can search; nobody plays alone.",
-              "script": "There's a hidden message in each of these boxes. When I say go, open the box and be the first group to find the message and read it out loud. You have 52 seconds. Ready? Set… GO!\n\n[Debrief] Where did everyone look first? Why? How did it feel when the cards didn't have the message? Where was it the whole time? [In the box everyone ignored.]"
+              "instructions": "The setup: Write \"winner\" on a slip of paper and place it face-down at the bottom of each box of playing cards, under the cards. Prepare one box per group of 4\u20138.\n\nGive a prepared box to each group. Everyone in the group can search; nobody plays alone.",
+              "script": "There's a hidden message in each of these boxes. When I say go, open the box and be the first group to find the message and read it out loud. You have 52 seconds. Ready? Set\u2026 GO!\n\n[Debrief] Where did everyone look first? Why? How did it feel when the cards didn't have the message? Where was it the whole time? [In the box everyone ignored.]"
             }
           ]
         },
@@ -707,7 +709,7 @@
             },
             {
               "id": "bless-p-81",
-              "title": "Read: Matthew 25:31–46",
+              "title": "Read: Matthew 25:31\u201346",
               "type": "bible-verse",
               "minutes": 5,
               "leaderNotes": "Student role: by midweek, ask two students to read the passage, one reading the King's words and one reading everything else. Send it to them to practice.",
@@ -715,7 +717,7 @@
             },
             {
               "id": "bless-p-82",
-              "title": "Read It · Sit In It · Live It",
+              "title": "Read It \u00b7 Sit In It \u00b7 Live It",
               "type": "discussion",
               "minutes": 6,
               "instructions": "Walk through the passage together with the same three moves every week. Take a few answers for each. There are no wrong answers to \"Sit in it.\"",
@@ -801,7 +803,7 @@
               "type": "discussion",
               "minutes": 12,
               "script": "1. Last week's challenge was to share a table. What happened?\n2. Has anyone helped you in a way that made you feel small? How is a real friend different?\n3. Both groups in the story were surprised. I wonder what it would look like if our group treated the \"last\" as first. Who would be the VIPs?\n4. What's hard to understand or believe about the judgment at the end of this passage?\n5. Where did you see God this week? Where did God feel far away?\n6. Who could you be with this week, not just do something for?",
-              "leaderNotes": "• Affirm before adding your view, don't correct the first answer, never require anyone to talk, and bring the group back to the passage.\n• Question 4 can stir fear. Stay calm, name that it's heavy, and point to grace: the King in the story is the Jesus who died for us. Follow up one-on-one with anyone who seems shaken."
+              "leaderNotes": "\u2022 Affirm before adding your view, don't correct the first answer, never require anyone to talk, and bring the group back to the passage.\n\u2022 Question 4 can stir fear. Stay calm, name that it's heavy, and point to grace: the King in the story is the Jesus who died for us. Follow up one-on-one with anyone who seems shaken."
             },
             {
               "id": "bless-p-94",
@@ -833,7 +835,7 @@
       "createdAt": 1790726400000,
       "updatedAt": 1791158400000,
       "title": "Share the Story",
-      "scripture": "John 4:1–26, 39–42",
+      "scripture": "John 4:1\u201326, 39\u201342",
       "keyVerse": "We know that this man really is the Savior of the world. (John 4:42)",
       "bigIdea": "Jesus knows our whole story and still offers us living water, and our story can point others to His.",
       "objectives": "See how Jesus crossed lines to offer living water\nPractice sharing a short part of their story with the five-finger Story Tool\nTake one next step with Jesus, wherever they are",
@@ -848,7 +850,7 @@
               "title": "Welcome",
               "type": "script",
               "minutes": 4,
-              "instructions": "Same rhythm every week:\n\n• At the door: greet every student by name. If you don't know a name yet, ask, and use it tonight.\n• Newcomers: introduce each new student to a host student (chosen ahead of time) who sits with them, introduces them to their small group leader, and walks with them to group.\n• Check-in: everyone answers one quick question with a word or a thumbs up, sideways, or down. Anyone can pass.",
+              "instructions": "Same rhythm every week:\n\n\u2022 At the door: greet every student by name. If you don't know a name yet, ask, and use it tonight.\n\u2022 Newcomers: introduce each new student to a host student (chosen ahead of time) who sits with them, introduces them to their small group leader, and walks with them to group.\n\u2022 Check-in: everyone answers one quick question with a word or a thumbs up, sideways, or down. Anyone can pass.",
               "script": "Welcome in! If this is your first time here, we're really glad you came. [Point out the host students.] These friends will hang out with you tonight so you're not on your own.\n\nLast week's challenge was to serve alongside someone. We'll talk about that in small groups tonight.\n\nYou don't have to leave anything at the door tonight. Bring your worries, your questions, your good news, all of it. God can handle every bit of it.\n\nQuick check-in: What's a story you've told so many times your friends could tell it for you? [Take a few answers. Anyone can pass.]"
             },
             {
@@ -856,7 +858,7 @@
               "title": "Illustration: One-Sentence Story",
               "type": "game",
               "minutes": 7,
-              "instructions": "The setup: Form circles of 8–12. No supplies needed.\n\nThe activity: The leader starts a story with one sentence (for example, \"There once was a student who found a strange envelope at the bottom of their locker\"). Each person adds exactly one sentence. Anyone can say \"pass\" and the story keeps going.\n\nThe goal: Listen to the person before you so the story makes sense and wraps up by the last person. Play two rounds, then debrief: What made it work? What made it fall apart?"
+              "instructions": "The setup: Form circles of 8\u201312. No supplies needed.\n\nThe activity: The leader starts a story with one sentence (for example, \"There once was a student who found a strange envelope at the bottom of their locker\"). Each person adds exactly one sentence. Anyone can say \"pass\" and the story keeps going.\n\nThe goal: Listen to the person before you so the story makes sense and wraps up by the last person. Play two rounds, then debrief: What made it work? What made it fall apart?"
             },
             {
               "id": "bless-p-98",
@@ -882,15 +884,15 @@
             },
             {
               "id": "bless-p-101",
-              "title": "Read: John 4:1–26, 39–42",
+              "title": "Read: John 4:1\u201326, 39\u201342",
               "type": "bible-verse",
               "minutes": 5,
               "leaderNotes": "Student role: ask two students by midweek to read: one reads Jesus, one reads the woman, and you read the narration. Send them the passage to practice.",
-              "script": "Now Jesus learned that the Pharisees had heard that he was gaining and baptizing more disciples than John— 2 although in fact it was not Jesus who baptized, but his disciples. 3 So he left Judea and went back once more to Galilee.\n\n4 Now he had to go through Samaria. 5 So he came to a town in Samaria called Sychar, near the plot of ground Jacob had given to his son Joseph. 6 Jacob's well was there, and Jesus, tired as he was from the journey, sat down by the well. It was about noon.\n\n7 When a Samaritan woman came to draw water, Jesus said to her, \"Will you give me a drink?\" 8 (His disciples had gone into the town to buy food.)\n\n9 The Samaritan woman said to him, \"You are a Jew and I am a Samaritan woman. How can you ask me for a drink?\" (For Jews do not associate with Samaritans.)\n\n10 Jesus answered her, \"If you knew the gift of God and who it is that asks you for a drink, you would have asked him and he would have given you living water.\"\n\n11 \"Sir,\" the woman said, \"you have nothing to draw with and the well is deep. Where can you get this living water? 12 Are you greater than our father Jacob, who gave us the well and drank from it himself, as did also his sons and his livestock?\"\n\n[Continue reading from a Bible through verse 26.]\n\n25 The woman said, \"I know that Messiah\" (called Christ) \"is coming. When he comes, he will explain everything to us.\" 26 Then Jesus declared, \"I, the one speaking to you—I am he.\"\n\n39 Many of the Samaritans from that town believed in him because of the woman's testimony, \"He told me everything I ever did.\" 40 So when the Samaritans came to him, they urged him to stay with them, and he stayed two days. 41 And because of his words many more became believers.\n\n42 They said to the woman, \"We no longer believe just because of what you said; now we have heard for ourselves, and we know that this man really is the Savior of the world.\""
+              "script": "Now Jesus learned that the Pharisees had heard that he was gaining and baptizing more disciples than John\u2014 2 although in fact it was not Jesus who baptized, but his disciples. 3 So he left Judea and went back once more to Galilee.\n\n4 Now he had to go through Samaria. 5 So he came to a town in Samaria called Sychar, near the plot of ground Jacob had given to his son Joseph. 6 Jacob's well was there, and Jesus, tired as he was from the journey, sat down by the well. It was about noon.\n\n7 When a Samaritan woman came to draw water, Jesus said to her, \"Will you give me a drink?\" 8 (His disciples had gone into the town to buy food.)\n\n9 The Samaritan woman said to him, \"You are a Jew and I am a Samaritan woman. How can you ask me for a drink?\" (For Jews do not associate with Samaritans.)\n\n10 Jesus answered her, \"If you knew the gift of God and who it is that asks you for a drink, you would have asked him and he would have given you living water.\"\n\n11 \"Sir,\" the woman said, \"you have nothing to draw with and the well is deep. Where can you get this living water? 12 Are you greater than our father Jacob, who gave us the well and drank from it himself, as did also his sons and his livestock?\"\n\n[Continue reading from a Bible through verse 26.]\n\n25 The woman said, \"I know that Messiah\" (called Christ) \"is coming. When he comes, he will explain everything to us.\" 26 Then Jesus declared, \"I, the one speaking to you\u2014I am he.\"\n\n39 Many of the Samaritans from that town believed in him because of the woman's testimony, \"He told me everything I ever did.\" 40 So when the Samaritans came to him, they urged him to stay with them, and he stayed two days. 41 And because of his words many more became believers.\n\n42 They said to the woman, \"We no longer believe just because of what you said; now we have heard for ourselves, and we know that this man really is the Savior of the world.\""
             },
             {
               "id": "bless-p-102",
-              "title": "Read It · Sit In It · Live It",
+              "title": "Read It \u00b7 Sit In It \u00b7 Live It",
               "type": "discussion",
               "minutes": 6,
               "instructions": "Walk through the passage together with the same three moves every week. Take a few answers for each. There are no wrong answers to \"Sit in it.\"",
@@ -929,14 +931,14 @@
                   "per": "total"
                 }
               ],
-              "script": "[Slowly pour water into the cup so everyone can hear it.] Everybody's thirsty for something: to be known, to be loved, to matter.\n\nJesus tells her he knows she's had five husbands and is living with someone now. People often read this as if she was a scandal. But in her world, women usually couldn't choose divorce. She may have been widowed or abandoned again and again. Either way, Jesus names her real story without shaming her, and then he tells her who he is: \"I, the one speaking to you—I am he.\"\n\nHere's what Christians believe: Jesus is the Messiah, the Savior of the world. He lived, died for our sins, and rose again, so that anyone can be forgiven and have new life with God that starts now and lasts forever. He knows your whole story too, the parts you're proud of and the parts you hide, and he still offers living water."
+              "script": "[Slowly pour water into the cup so everyone can hear it.] Everybody's thirsty for something: to be known, to be loved, to matter.\n\nJesus tells her he knows she's had five husbands and is living with someone now. People often read this as if she was a scandal. But in her world, women usually couldn't choose divorce. She may have been widowed or abandoned again and again. Either way, Jesus names her real story without shaming her, and then he tells her who he is: \"I, the one speaking to you\u2014I am he.\"\n\nHere's what Christians believe: Jesus is the Messiah, the Savior of the world. He lived, died for our sins, and rose again, so that anyone can be forgiven and have new life with God that starts now and lasts forever. He knows your whole story too, the parts you're proud of and the parts you hide, and he still offers living water."
             },
             {
               "id": "bless-p-108",
               "title": "Point 3: Her story pointed to His",
               "type": "script",
               "minutes": 5,
-              "script": "She ran back to the town she'd been avoiding and said, \"Come, see a man who told me everything I ever did.\" She didn't have every answer. She still had questions. She just told what happened and invited people to come and see.\n\nAnd it worked: \"Many… believed in him because of the woman's testimony.\" Then they met Jesus for themselves (v. 42). Your job isn't to convince anyone. It's to point.\n\n[Leader: share your own story in about one minute, using the five fingers you're about to teach. Keep it short and honest.]",
+              "script": "She ran back to the town she'd been avoiding and said, \"Come, see a man who told me everything I ever did.\" She didn't have every answer. She still had questions. She just told what happened and invited people to come and see.\n\nAnd it worked: \"Many\u2026 believed in him because of the woman's testimony.\" Then they met Jesus for themselves (v. 42). Your job isn't to convince anyone. It's to point.\n\n[Leader: share your own story in about one minute, using the five fingers you're about to teach. Keep it short and honest.]",
               "leaderNotes": "Optional student role: ask a student ahead of time if they'd like to share a one-minute story of where they have seen God. Never put a student on the spot."
             }
           ]
@@ -951,7 +953,7 @@
               "title": "The Story Tool: Five Fingers",
               "type": "group-activity",
               "minutes": 10,
-              "instructions": "Teach the Story Tool with your hand, one finger at a time. Have everyone hold up their hand and touch each finger as you go:\n\n• Thumb, Affirm: Listen to their story and give it a thumbs up. \"That sounds really hard.\"\n• Pointer, Connect: Point to your story. \"I've felt that too.\"\n• Middle, Exalt: Lift up God's story, the part that fits. \"Jesus felt that kind of pain too, and he's with us in it.\"\n• Ring, Reveal: Share your before and after. \"When I started talking to Jesus about it, I didn't feel so alone.\"\n• Pinky, Suggest: Offer one small next step and do it together. \"Want to come to youth group with me?\"\n\nThen pair up for practice. One student shares a made-up struggle (stress, a fight with a friend, feeling left out); the other practices the five fingers out loud. Two minutes each, then switch. Anyone can watch instead of practicing."
+              "instructions": "Teach the Story Tool with your hand, one finger at a time. Have everyone hold up their hand and touch each finger as you go:\n\n\u2022 Thumb, Affirm: Listen to their story and give it a thumbs up. \"That sounds really hard.\"\n\u2022 Pointer, Connect: Point to your story. \"I've felt that too.\"\n\u2022 Middle, Exalt: Lift up God's story, the part that fits. \"Jesus felt that kind of pain too, and he's with us in it.\"\n\u2022 Ring, Reveal: Share your before and after. \"When I started talking to Jesus about it, I didn't feel so alone.\"\n\u2022 Pinky, Suggest: Offer one small next step and do it together. \"Want to come to youth group with me?\"\n\nThen pair up for practice. One student shares a made-up struggle (stress, a fight with a friend, feeling left out); the other practices the five fingers out loud. Two minutes each, then switch. Anyone can watch instead of practicing."
             },
             {
               "id": "bless-p-113",
@@ -972,7 +974,7 @@
                   "per": "person"
                 }
               ],
-              "instructions": "Hand out response cards with four boxes and a line for a name:\n\n• ☐ I want to start following Jesus.\n• ☐ I want to take a next step with Jesus.\n• ☐ I have questions. I'd like to talk with a leader.\n• ☐ Not right now, and that's okay.\n\nPlay quiet music. Give plenty of time. Collect every card, filled in or blank, so no one stands out.",
+              "instructions": "Hand out response cards with four boxes and a line for a name:\n\n\u2022 \u2610 I want to start following Jesus.\n\u2022 \u2610 I want to take a next step with Jesus.\n\u2022 \u2610 I have questions. I'd like to talk with a leader.\n\u2022 \u2610 Not right now, and that's okay.\n\nPlay quiet music. Give plenty of time. Collect every card, filled in or blank, so no one stands out.",
               "script": "Before we finish, I want to give you a chance to respond. There's no pressure, and nobody will see your card except the leaders.\n\nMaybe tonight you want to start following Jesus. You can tell him right where you're sitting: \"Jesus, I believe you are who you say you are. I want to follow you. Thank you for knowing my whole story and loving me anyway.\" If you prayed that, check the first box, and we'd love to celebrate with you and help you take a first step.\n\nMaybe you already follow Jesus and you want to take a next step: reading a Gospel, getting baptized, joining a small group. Check the second box.\n\nMaybe you have questions. That's good. People in the Bible did too. Check the third box, and a leader will reach out.\n\nAnd if it's not right now, that's okay too. Jesus welcomes you wherever you are, and the door stays open.",
               "leaderNotes": "Follow up on every card within a week, one-on-one, in a place where others can see you. If a card or conversation mentions abuse, self-harm, or that a student isn't safe, follow your church's safety policy and tell the youth pastor the same day. Never promise to keep it secret."
             },
@@ -1020,7 +1022,7 @@
               "type": "discussion",
               "minutes": 14,
               "script": "1. Last week you served alongside someone. What did you see and feel? What's broken there?\n2. What does our faith say about it, and what might God be calling you to do next?\n3. Why do you think the woman ran to tell the people she'd been avoiding?\n4. I wonder what it was like for her to be fully known and not rejected. What would that be like for you?\n5. What questions do you or your friends still have about God, Jesus, or church?\n6. Where did you see God this week? Where did God feel far away?",
-              "leaderNotes": "• Affirm before adding your view, don't correct the first answer, never require anyone to talk, and bring the group back to the passage.\n• Questions 1–2 debrief last week's service challenge. Never bring up response cards in group; follow up one-on-one."
+              "leaderNotes": "\u2022 Affirm before adding your view, don't correct the first answer, never require anyone to talk, and bring the group back to the passage.\n\u2022 Questions 1\u20132 debrief last week's service challenge. Never bring up response cards in group; follow up one-on-one."
             },
             {
               "id": "bless-p-120",

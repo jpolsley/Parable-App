@@ -1,5 +1,6 @@
-import { Database, Section, Series, SeriesColor, Service } from '../types';
-import { addDays, newPart, newSection, newSeries, newService } from './factory';
+import { Database, Section, Series, SeriesColor, Service, TeachingRun } from '../types';
+import { addDays, newPart, newRun, newSection, newSeries, newService } from './factory';
+import { formatDate } from './time';
 
 // Full class strings so Tailwind picks them up.
 export const COLOR_CLASSES: Record<SeriesColor, { bar: string; soft: string; text: string; dot: string }> = {
@@ -12,12 +13,11 @@ export const COLOR_CLASSES: Record<SeriesColor, { bar: string; soft: string; tex
   slate: { bar: 'bg-slate-500', soft: 'bg-slate-100', text: 'text-slate-700', dot: 'bg-slate-500' },
 };
 
+// A series' lessons in order. Lessons have numbers, not dates: dates belong to runs (below).
 export const weeksOf = (db: Database, seriesId: string) =>
-  db.services.filter((s) => s.seriesId === seriesId).sort((a, b) => (a.week ?? 0) - (b.week ?? 0) || a.date.localeCompare(b.date));
+  db.services.filter((s) => s.seriesId === seriesId).sort((a, b) => (a.week ?? 0) - (b.week ?? 0) || a.createdAt - b.createdAt);
 
-export const seriesRange = (weeks: Service[]) => (weeks.length ? { first: weeks[0].date, last: weeks[weeks.length - 1].date } : null);
-
-// Number weeks in the given order and put them on the series' weekly schedule.
+// Number lessons in the given order.
 export const reschedule = (db: Database, seriesId: string, orderedIds?: string[]): Database => {
   const series = db.series.find((s) => s.id === seriesId);
   if (!series) return db;
@@ -27,7 +27,7 @@ export const reschedule = (db: Database, seriesId: string, orderedIds?: string[]
     ...db,
     services: db.services.map((s) => {
       const i = position.get(s.id);
-      return i === undefined ? s : { ...s, week: i + 1, date: addDays(series.startDate, 7 * i), audience: s.audience || series.audience };
+      return i === undefined ? s : { ...s, week: i + 1, audience: s.audience || series.audience };
     }),
   };
 };
@@ -53,3 +53,37 @@ export const migrateLegacySeries = (rawServices: Record<string, unknown>[], seri
   });
   return { services, series: [...series, ...created] };
 };
+
+// ---------- Runs: each time a series is taught ----------
+
+export type RunPace = 'weekly' | 'daily' | 'custom';
+
+// Dates for a new run: every week or every day from the first date, or left blank to fill in.
+export const planDates = (lessons: Service[], first: string, pace: RunPace): Record<string, string> =>
+  Object.fromEntries(lessons.map((l, i) => [l.id, pace === 'custom' || !first ? '' : addDays(first, pace === 'weekly' ? 7 * i : i)]));
+
+const ISO = /^\d{4}-\d{2}-\d{2}$/;
+// A run's entry for a lesson: a real date reads as one; anything else ("Sat morning") shows as typed.
+export const formatWhen = (value: string) => (ISO.test(value) ? formatDate(value) : value);
+export const shortWhen = (value: string) =>
+  ISO.test(value) ? new Date(`${value}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : value;
+
+export const printRunOf = (series?: Series): TeachingRun | undefined =>
+  series?.printRun ? series.runs.find((r) => r.id === series.printRun) : undefined;
+
+// Lessons as they print: dates and start time come from the chosen run, or none at all.
+export const forPrint = (series: Series | undefined, lessons: Service[]): Service[] => {
+  const run = printRunOf(series);
+  return lessons.map((l) => ({ ...l, date: run?.dates[l.id] ?? '', startTime: run?.time ?? '' }));
+};
+
+// Saves from before runs existed: the dates the lessons were scheduled on become the series' first run.
+export const migrateRuns = (series: Series[], services: Service[], raw: unknown[]): Series[] =>
+  series.map((s, i) => {
+    const r = raw[i] as Record<string, unknown> | undefined;
+    if (!r || Array.isArray(r.runs)) return s;
+    const lessons = services.filter((x) => x.seriesId === s.id).sort((a, b) => (a.week ?? 0) - (b.week ?? 0));
+    if (!lessons.length) return s;
+    const run = newRun({ name: 'First schedule', time: lessons[0].startTime, dates: Object.fromEntries(lessons.map((l) => [l.id, l.date])) });
+    return { ...s, runs: [run], printRun: run.id };
+  });
