@@ -2,7 +2,7 @@ import { fitText } from './customPage';
 // Each lesson section starts its own page, so a section a few lines too long leaves those lines
 // stranded on an almost empty page. Just before printing, measure each section and shrink the
 // ones that only slightly overflow so they fit their page (or pages). Long sections still flow normally.
-// One-page sheets (session overview, small group guide) are fitted the same way.
+// One-page sheets (session plan and overview, small group guide, family page) are fitted the same way.
 
 const PX_PER_IN = 96;
 const CONTENT_WIDTH = (8.5 - 0.65 * 2) * PX_PER_IN; // letter, side margins from @page
@@ -10,7 +10,7 @@ const CONTENT_HEIGHT = (11 - 0.6 - 0.7) * PX_PER_IN; // top and bottom margins f
 const MAX_SHRINK = 0.82; // never smaller than this, so text stays comfortable to read
 
 export const fitSectionsToPages = (root: HTMLElement) => {
-  const sections = [...root.querySelectorAll<HTMLElement>('.pr-flow > .pr-sec, .pr-overview, .pr-sg')];
+  const sections = [...root.querySelectorAll<HTMLElement>('.pr-flow > .pr-sec, .pr-overview, .pr-sg, .pr-plan, .pr-family')];
   const fitBoxes = root.querySelector('[data-fit]');
   if (!sections.length && !fitBoxes) return;
   const saved = root.getAttribute('style') ?? '';
