@@ -92,4 +92,7 @@ way they are.
   - times from 0:00
 - **"Ok add it":** the remaining mockup pieces (storyboard, inline Diana suggestions, "/" blocks). → Not built yet;
   see `parable-app.md` §7.
+- **The first test of this skill:** a new chat stopped at an outline and asked whether to continue. Justin's reaction:
+  "I would rather have the pdf and json file and then the chat letting me know what it did." → The skill now
+  delivers the finished JSON and PDF, then reports. The app is bundled so the PDF can be made anywhere.
 - **Preserving the work:** "If I lost access to Claude… I could give the skill and it would understand." → This skill.

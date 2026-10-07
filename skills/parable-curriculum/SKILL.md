@@ -32,7 +32,7 @@ Work out which one the request is, then read the matching references. Read only 
 
 | Request | Read | Produce |
 |---|---|---|
-| Write or revise a series, lesson, small group guide, family page or leader letter | `references/playbook.md`, `references/lesson-recipe.md`, `references/parable-format.md` | A `.parable.json` file Justin imports, plus a short plain-language summary |
+| Write or revise a series, lesson, small group guide, family page or leader letter | `references/playbook.md`, `references/lesson-recipe.md`, `references/parable-format.md` | The finished `.parable.json` and the printed book as a PDF, then a short report of what you did. Not an outline to approve |
 | Review a lesson against the playbook | `references/playbook.md` (checklist in section 5) | Each checklist question answered yes or no, with one concrete fix per "no" |
 | Design a book (cover, week dividers, page styling), often from a reference picture | `references/design-taste.md`, `references/layout-files.md` | A `.parable-layout.json` plus sample pages rendered to PDF or PNG |
 | Change the Parable app (features, bugs, UI) | `references/parable-app.md` | Code changes on the dev branch, tested in a browser, plus a merge link |
@@ -48,23 +48,31 @@ proposing anything that sounds like a past direction.
 
 ## Writing curriculum: the workflow
 
-1. **Get the essentials.** Ask only for what you can't sensibly assume:
-   - audience (students by default)
-   - number of lessons
-   - topic or passages
-   - the series practice, if Justin has one in mind
-2. **Outline first.** Write the series outline and share it before writing every lesson:
+**Justin wants finished files, not a proposal.** When he asks for a series or lesson, the deliverable is:
+1. the `.parable.json` file
+2. the printed book as a PDF
+3. a short note on what you did
+
+Don't stop to show an outline and ask whether to continue. He tried that and said: "I would rather have the pdf and
+json file and then the chat letting me know what it did."
+
+Make sensible choices yourself (passages, the series practice, illustrations) and list them afterward as things to
+check. Only ask first when you truly can't proceed, for example when you don't know the topic or the audience. Give
+an outline instead of the full series only if he asks for one.
+
+1. **Plan the series internally** (`lesson-recipe.md` §1). Decide:
    - title and big idea
    - memory verse
    - the one practice that grows each week
    - for each lesson: title, passage, big idea, the hard part to name, the real-life connection
    - where the lament, the service challenge and the invitation fall
 
-   An outline is cheap to change and a full series isn't.
-3. **Write each lesson with the recipe** in `lesson-recipe.md`: the same five sections every week, the same welcome
-   rhythm, the same study method and the same practice moment. Make the week-specific parts strong: the illustration,
-   the three points, the challenge and the questions.
-4. **Shape it for print.** Use the conventions in `parable-format.md`:
+   Don't stop to present the plan.
+2. **Write every lesson with the recipe** in `lesson-recipe.md`:
+   - The same five sections every week, the same welcome rhythm, the same study method and the same practice moment.
+   - Make the week-specific parts strong: the illustration, the three points, the challenge and the questions.
+   - Start from a copy of `scripts/build-bless.mjs`, replacing its content. Its helpers handle ids and formatting.
+3. **Shape it for print.** Use the conventions in `parable-format.md`:
    - "Point 1: …" titles
    - "Read: Passage" parts
    - numbered discussion questions
@@ -72,11 +80,31 @@ proposing anything that sounds like a past direction.
    - section roles
 
    Parable's print engine reads these to lay out the book. Content that ignores them prints as plain blocks.
-5. **Self-review against the checklist** (playbook section 5) before handing it over. Fix the misses.
-6. **Deliver:**
-   - **The `.parable.json` file.** Run `scripts/validate-series.mjs` on it first.
-   - **A summary:** what's in each lesson, what you assumed, and anything Justin should check.
-   - **The import step:** Shelf → More → Import a file.
+4. **Check it:**
+   - Self-review every lesson against the playbook checklist (playbook section 5) and fix the misses.
+   - Run `node scripts/validate-series.mjs file.parable.json`. Fix errors, and fix warnings unless they're
+     deliberate.
+5. **Print it:**
+   - Run `node scripts/render-book-pdf.mjs Series-Name.pdf --series file.parable.json`. Add `--design "Poster Club"`
+     if Justin asked for a look.
+   - The script serves the copy of Parable bundled in `assets/parable-app/`, so it needs no repo or internet, only
+     Node and Playwright with Chromium. If Playwright is missing, install it in a scratch folder:
+     `npm i playwright && npx playwright install chromium`.
+   - **Look at the PDF before delivering.** Convert a few pages to images (for example with PyMuPDF:
+     `pip install pymupdf`) and check:
+     - the small group pages fit on one page each
+     - no near-empty pages except dividers
+     - nothing is cut off
+   - If you can't run a browser in this environment, still deliver the JSON. Say plainly that you couldn't make the
+     PDF, and tell Justin to print it from Parable: import the file, open the series, then Print → Series book →
+     Save as PDF.
+6. **Deliver.** Give him both files: save them where he can open them (his Downloads folder or the folder he named),
+   or attach them. Then write a short report:
+   - **What you made:** series title, number of lessons, page count, and one line per lesson (title, passage, big idea).
+   - **The series threads:** the practice and how it grows, and where the lament, service challenge and invitation fall.
+   - **To check:** your assumptions (passages chosen, practice invented, anything not verified), and Scripture you
+     left for the leader to read from a Bible.
+   - **To use it:** Parable → Shelf → More → Import a file → pick the `.parable.json`.
 
 **Accuracy rules** (from experience):
 - **Scripture:** don't type out passages from memory. A wrong verse in a printed book is worse than none. Either:

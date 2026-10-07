@@ -17,7 +17,7 @@ the voice better than any description.
 
 ## 1. The series layer
 
-Decide these before writing any lesson, and share them as the outline:
+Decide these before writing any lesson. Plan them yourself and go straight on to writing; list your choices in the final report rather than stopping to ask (unless Justin asked for an outline):
 
 - **Title, audience, description, big idea** (one sentence for the whole series), and **memory verse**. Tie the verse
   to the series name if you can. B.L.E.S.S. uses Genesis 12:2, "I will bless you… and you will be a blessing."

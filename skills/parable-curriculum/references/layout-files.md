@@ -167,16 +167,16 @@ re-render and check page counts.
 
 ## 7. Rendering samples
 
-Always look at real pages before showing Justin. You need a checkout of the repo (`github.com/ministryAI/Parable-App`,
-dev branch per `parable-app.md`), Node and Chromium (Playwright).
+Always look at real pages before showing Justin. You need Node and Playwright with Chromium. No repo is needed, because the
+script serves the copy of Parable bundled in `assets/parable-app/`.
 
 ```bash
-npm install && npm run build && npx vite preview --port 8123 &
-node scripts/render-book-pdf.mjs path/to/design.parable-layout.json "Design Name" out.pdf
+node scripts/render-book-pdf.mjs out.pdf --layout path/to/design.parable-layout.json
 ```
 
 The script imports the design, applies it to B.L.E.S.S., prints the whole series book to PDF, and reports console
-errors. Convert pages to PNG (for example `pdftoppm -png -r 60 out.pdf page`) and look at every page: covers,
+errors. Add `--series file.parable.json` to print another series. Add `--url http://localhost:8123` to use a running
+dev copy of Parable instead, for example when you've changed the app itself. Convert pages to PNG (for example with PyMuPDF: `page.get_pixmap(dpi=60).save(...)`, or `pdftoppm -png -r 60 out.pdf page`) and look at every page: covers,
 every divider, a full week of inside pages, and the small group and family pages. Check that the page count stays
 about the same as before (B.L.E.S.S. is 53 pages in the default design).
 

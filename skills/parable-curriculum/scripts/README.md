@@ -6,7 +6,7 @@ All are Node scripts (Node 18+). Each layout generator writes one `.parable-layo
 | Script | What it does |
 |---|---|
 | `validate-series.mjs` | Checks a `.parable.json` series against the format and the lesson recipe. Run it before handing over any curriculum. |
-| `render-book-pdf.mjs` | Prints a series book to PDF from a locally running Parable, optionally importing a design or a series first. Needs Playwright and Chromium. |
+| `render-book-pdf.mjs` | Prints a series book to PDF, the same pages as Print → Series book. It serves the bundled `../assets/parable-app` itself, so no repo or internet is needed. `--series file.parable.json` imports and prints that series. `--design "Poster Club"` or `--layout file` applies a design. Needs Playwright and Chromium (`npm i playwright && npx playwright install chromium`). |
 | `build-bless.mjs` | Builds the playbook edition of B.L.E.S.S. (`../assets/bless.parable.json`). **Copy this to write a new series**; its helpers handle ids and formatting. |
 | `make-poster.mjs` | Poster Club. The cover and dividers are identical to the built-in design. Its inside-page CSS is the later "calm" variant. The shipped round-3 CSS (Justin's pick) is in `../assets/layouts/poster-club.parable-layout.json`, so to rebuild the built-in design exactly, copy the `css` field from that file. |
 | `make-poster-loud.mjs` | The "loud interiors" Poster Club pass Justin rejected ("Actually I hate that"). Kept as a record. |

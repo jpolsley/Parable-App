@@ -146,7 +146,9 @@ npx vite preview --port 8123      # then drive it with Playwright + Chromium
 
 - Test in a fresh browser profile (seeded B.L.E.S.S. appears) and check the console for errors.
 - For print changes, print the B.L.E.S.S. series book to PDF and look at the pages
-  (`scripts/render-book-pdf.mjs` does this, with or without a design).
+  (`scripts/render-book-pdf.mjs --url http://localhost:8123` does this against your running build).
+- **The bundled app copy:** `assets/parable-app/` is a snapshot of `dist/`, used by the PDF script. After app changes
+  that affect printing, refresh it: `npm run build`, then replace the skill's `assets/parable-app/` with `dist/`.
 - For AI features, use a small stand-in server that returns canned replies, and tell Justin the real model is
   untested until he tries it.
 
