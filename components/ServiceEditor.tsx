@@ -4,8 +4,8 @@ import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSo
 import { ArrowLeft, BookOpen, Clock, Copy, Download, Eye, EyeOff, FileText, LayoutList, Package, PanelRight, Plus, Printer, Scissors, Sunrise, Trash2, Users } from 'lucide-react';
 import { Part, Section, Service } from '../types';
 import { cloneSection, clonePart, cloneService, newSection } from '../lib/factory';
-import { COLOR_CLASSES } from '../lib/series';
-import { buildSchedule, formatDate, formatDuration, serviceMinutes } from '../lib/time';
+import { COLOR_CLASSES, weeksOf } from '../lib/series';
+import { buildElapsed, formatDuration, serviceMinutes, visibleParts } from '../lib/time';
 import { downloadJson, slug } from '../lib/files';
 import { navigate } from '../lib/route';
 import { useStore } from '../store/StoreContext';
@@ -17,7 +17,7 @@ import { Button, EmptyState, Menu, MenuDivider, MenuItem } from './ui';
 
 const PREVIEW_KEY = 'parable.preview';
 const PREVIEW_KINDS: { id: PreviewKind; label: string }[] = [
-  { id: 'week', label: 'Whole week' },
+  { id: 'week', label: 'Whole lesson' },
   { id: 'lesson', label: 'Lesson' },
   { id: 'small', label: 'Small group' },
   { id: 'family', label: 'Family' },
@@ -43,7 +43,8 @@ export const ServiceEditor: React.FC<{ serviceId: string; focusPartId?: string }
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
-  const schedule = useMemo(() => (service ? buildSchedule(service) : {}), [service]);
+  // Times count from the start of the lesson (0:00, 0:04…); clock times belong to a run, not the lesson.
+  const schedule = useMemo(() => (service ? buildElapsed(service) : {}), [service]);
   // Live preview of the printed pages beside the editor; the choice is remembered per browser.
   const [pref, setPref] = useState(() => readPref<{ on: boolean; kind: PreviewKind; panel: 'preview' | 'details' }>({ on: true, kind: 'week', panel: 'preview' }));
   const savePref = (next: Partial<typeof pref>) => {
@@ -139,7 +140,7 @@ export const ServiceEditor: React.FC<{ serviceId: string; focusPartId?: string }
     if (series) addWeeks(series.id, [copy]);
     else addServices([copy]);
     navigate(`/s/${copy.id}`);
-    toast('Service duplicated');
+    toast('Lesson duplicated');
   };
   const openPart = (partId: string) => {
     // A collapsed section mounts its parts on the next render, so open it via both routes.
@@ -156,8 +157,8 @@ export const ServiceEditor: React.FC<{ serviceId: string; focusPartId?: string }
   return (
     <div className={`${pref.on ? 'max-w-[1680px]' : 'max-w-7xl'} mx-auto px-4 md:px-6 pb-24`}>
       <div className="flex items-center gap-2 text-sm text-gray-500 py-3">
-        <button type="button" onClick={() => navigate('/series')} className="inline-flex items-center gap-1 hover:text-ink">
-          <ArrowLeft className="w-4 h-4" /> Series
+        <button type="button" onClick={() => navigate('/')} className="inline-flex items-center gap-1 hover:text-ink">
+          <ArrowLeft className="w-4 h-4" /> Shelf
         </button>
         {series && (
           <>
@@ -174,12 +175,11 @@ export const ServiceEditor: React.FC<{ serviceId: string; focusPartId?: string }
           <input
             value={service.title}
             onChange={(e) => update((s) => ({ ...s, title: e.target.value }))}
-            aria-label="Service title"
+            aria-label="Lesson title"
             className="w-full bg-transparent font-display text-3xl md:text-4xl leading-tight rounded px-1 -mx-1 focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent/20"
           />
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600 mt-2">
-            <span>{formatDate(service.date)}</span>
-            {series && service.week && <span className="font-semibold">Week {service.week} of {series.title}</span>}
+            {series && service.week && <span className="font-semibold">Lesson {service.week} of {series.title}</span>}
             <span className="inline-flex items-center gap-1"><Users className="w-4 h-4" />{service.audience} · {service.classSize} kids</span>
             <span className="inline-flex items-center gap-1 font-semibold text-ink"><Clock className="w-4 h-4" />{formatDuration(serviceMinutes(service))}</span>
           </div>
@@ -190,32 +190,33 @@ export const ServiceEditor: React.FC<{ serviceId: string; focusPartId?: string }
             {pref.on ? 'Hide preview' : 'Preview'}
           </Button>
           <Menu trigger={<Button type="button" icon={Printer}>Print</Button>}>
-            <MenuItem icon={BookOpen} onClick={() => print(service.id, { kind: 'week' })}>Full week (lesson, small group, family)</MenuItem>
+            <MenuItem icon={BookOpen} onClick={() => print(service.id, { kind: 'week' })}>Whole lesson (large group, small group, family)</MenuItem>
             <MenuItem icon={FileText} onClick={() => print(service.id, { kind: 'lesson' })}>Large group lesson</MenuItem>
             <MenuItem icon={Users} onClick={() => print(service.id, { kind: 'small' })}>Small group guide</MenuItem>
             <MenuItem icon={Sunrise} onClick={() => print(service.id, { kind: 'family' })}>Family page</MenuItem>
             <MenuItem icon={Scissors} onClick={() => print(service.id, { kind: 'takehome' })}>Take-home cards (2 per page)</MenuItem>
             <MenuDivider />
-            <MenuItem icon={LayoutList} onClick={() => print(service.id, { kind: 'run-sheet' })}>Run sheet (times only)</MenuItem>
+            <MenuItem icon={LayoutList} onClick={() => print(service.id, { kind: 'run-sheet' })}>Run sheet</MenuItem>
             <MenuItem icon={Package} onClick={() => print(service.id, { kind: 'supplies' })}>Supply list</MenuItem>
           </Menu>
-          <Menu label="Service actions">
-            <MenuItem icon={Copy} onClick={duplicate}>Duplicate service</MenuItem>
+          <Menu label="Lesson actions">
+            <MenuItem icon={Copy} onClick={duplicate}>Duplicate lesson</MenuItem>
             <MenuItem icon={Download} onClick={() => downloadJson(`${slug(service.title)}.parable.json`, { version: 1, series: [], services: [found!], library: [] })}>Export file</MenuItem>
             <MenuItem icon={LayoutList} onClick={() => mapSections((secs) => secs.map((s) => ({ ...s, collapsed: !allCollapsed })))}>
               {allCollapsed ? 'Expand all sections' : 'Collapse all sections'}
             </MenuItem>
             <MenuDivider />
-            <MenuItem icon={Trash2} danger onClick={() => { deleteService(service.id); navigate(series ? `/series/${series.id}` : '/series'); }}>Delete service</MenuItem>
+            <MenuItem icon={Trash2} danger onClick={() => { deleteService(service.id); navigate(series ? `/series/${series.id}` : '/'); }}>Delete lesson</MenuItem>
           </Menu>
         </div>
       </header>
 
-      <div className={`grid grid-cols-1 gap-6 items-start ${pref.on ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]' : 'lg:grid-cols-[minmax(0,1fr)_380px]'}`}>
+      <div className={`grid grid-cols-1 gap-6 items-start ${pref.on ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[210px_minmax(0,1fr)_minmax(0,1fr)] 2xl:grid-cols-[230px_minmax(0,5fr)_minmax(0,6fr)]' : 'lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[210px_minmax(0,1fr)_380px]'}`}>
+        <Outline service={service} lessons={series ? weeksOf(db, series.id) : [service]} onPart={openPart} />
         <div className="space-y-4" onFocus={pref.on ? followInPreview : undefined}>
           {service.sections.length === 0 && (
             <div className="border-2 border-dashed border-gray-300 rounded-xl">
-              <EmptyState icon={LayoutList} title="This service is empty">Add a section like "Worship" or "Small Groups", then add parts to it.</EmptyState>
+              <EmptyState icon={LayoutList} title="This lesson is empty">Add a section like "Worship" or "Small Groups", then add parts to it.</EmptyState>
             </div>
           )}
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd} modifiers={[restrictToVerticalAxis]}>
@@ -262,3 +263,40 @@ export const ServiceEditor: React.FC<{ serviceId: string; focusPartId?: string }
     </div>
   );
 };
+
+// The writer's outline: every lesson in the series, and the open lesson's sections and parts.
+const Outline: React.FC<{ service: Service; lessons: Service[]; onPart: (partId: string) => void }> = ({ service, lessons, onPart }) => (
+  <nav aria-label="Outline" className="hidden xl:block sticky top-[76px] max-h-[calc(100vh-92px)] overflow-y-auto text-sm pr-1">
+    <ol className="space-y-0.5">
+      {lessons.map((l) => (
+        <li key={l.id}>
+          {l.id === service.id ? (
+            <>
+              <span className="flex gap-2 px-2 py-1.5 rounded-lg bg-accent-soft text-accent font-semibold">
+                {l.week && <span className="tabular-nums opacity-70">{String(l.week).padStart(2, '0')}</span>}
+                <span className="min-w-0">{l.title}</span>
+              </span>
+              <div className="ml-3 pl-3 border-l border-line my-1 space-y-2">
+                {service.sections.filter((sec) => visibleParts(sec).length > 0).map((sec) => (
+                  <div key={sec.id}>
+                    <p className="px-2 pt-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500">{sec.title}</p>
+                    {visibleParts(sec).map((p) => (
+                      <button key={p.id} type="button" onClick={() => onPart(p.id)} className="block w-full text-left px-2 py-1 rounded-md text-gray-600 hover:bg-white hover:text-ink truncate">
+                        {p.title}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <a href={`#/s/${l.id}`} className="flex gap-2 px-2 py-1.5 rounded-lg text-gray-600 hover:bg-white hover:text-ink">
+              {l.week && <span className="tabular-nums text-gray-400">{String(l.week).padStart(2, '0')}</span>}
+              <span className="min-w-0 truncate">{l.title}</span>
+            </a>
+          )}
+        </li>
+      ))}
+    </ol>
+  </nav>
+);

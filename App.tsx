@@ -2,8 +2,7 @@ import React from 'react';
 import { AlertTriangle, Bookmark, Check, Cloud, Layers, Loader2, Sparkles, Undo2, X } from 'lucide-react';
 import { StoreProvider, useStore } from './store/StoreContext';
 import { navigate, useRoute } from './lib/route';
-import { HomeDashboard } from './components/HomeDashboard';
-import { SeriesListPage } from './components/SeriesListPage';
+import { ShelfPage } from './components/ShelfPage';
 import { SeriesPage } from './components/SeriesPage';
 import { ServiceEditor } from './components/ServiceEditor';
 import { LibraryPage } from './components/LibraryPage';
@@ -33,8 +32,7 @@ const Shell: React.FC = () => {
               <span className="w-8 h-8 rounded-lg bg-accent text-white flex items-center justify-center"><Layers className="w-5 h-5" /></span>
               <span className="hidden sm:inline font-display tracking-tight">Parable</span>
             </button>
-            <button type="button" className={nav(route.name === 'home')} onClick={() => navigate('/')}>Dashboard</button>
-            <button type="button" className={nav(route.name === 'series-list' || route.name === 'series' || route.name === 'service')} onClick={() => navigate('/series')}>Series</button>
+            <button type="button" className={nav(route.name === 'home' || route.name === 'series-list' || route.name === 'series' || route.name === 'service')} onClick={() => navigate('/')}>Shelf</button>
             <button type="button" className={nav(route.name === 'library')} onClick={() => navigate('/library')}>
               <Bookmark className="w-4 h-4 hidden sm:inline -mt-0.5 mr-1" />Library
             </button>
@@ -50,10 +48,10 @@ const Shell: React.FC = () => {
 
         <main>
           {route.name === 'service' && <ServiceEditor key={route.id} serviceId={route.id} focusPartId={route.partId} />}
-          {route.name === 'series-list' && <SeriesListPage />}
+          {route.name === 'series-list' && <ShelfPage />}
           {route.name === 'series' && <SeriesPage key={route.id} seriesId={route.id} />}
           {route.name === 'library' && <LibraryPage />}
-          {route.name === 'home' && <HomeDashboard />}
+          {route.name === 'home' && <ShelfPage />}
         </main>
 
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 space-y-2 w-[calc(100%-2rem)] max-w-md" aria-live="polite">

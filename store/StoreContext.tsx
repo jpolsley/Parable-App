@@ -1,10 +1,10 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Database, LayoutPack, Part, PrintScope, Series, Service } from '../types';
 import { clonePart, newPart, newSeries, newService } from '../lib/factory';
-import { migrateLegacySeries, reschedule, weeksOf } from '../lib/series';
+import { migrateLegacySeries, migrateRuns, reschedule, weeksOf } from '../lib/series';
 import { AISettings, loadSettings, saveSettings } from '../services/aiSettings';
 import { testConnection } from '../services/aiService';
-import { SAMPLE_LAYOUTS, SAMPLES } from '../lib/samples';
+import { SAMPLE_LAYOUTS, SAMPLES, seriesFingerprint } from '../lib/samples';
 import { PRINT_FACES } from '../lib/design';
 import { readLayout } from '../lib/layouts';
 import { fitSectionsToPages } from '../lib/printFit';
@@ -25,9 +25,31 @@ const withSamples = (db: Database): Database => {
   const freshLayouts = SAMPLE_LAYOUTS.filter((s) => !seeded.includes(s.key));
   if (!fresh.length && !freshLayouts.length) return db;
   let next = db;
-  for (const { data } of fresh) {
-    const series = (data.series ?? []).map(newSeries).filter((s) => !next.series.some((x) => x.id === s.id));
-    const services = (data.services ?? []).map((s) => newService(s as unknown as Record<string, unknown>)).filter((s) => !next.services.some((x) => x.id === s.id));
+  for (const { data, replaces } of fresh) {
+    let series = (data.series ?? []).map(newSeries);
+    let services = (data.services ?? []).map((s) => newService(s as unknown as Record<string, unknown>));
+    const old = replaces && seeded.includes(replaces.key) ? next.series.find((s) => s.id === replaces.seriesId) : undefined;
+    if (old && replaces) {
+      const oldWeeks = next.services.filter((s) => s.seriesId === old.id);
+      const untouched = seriesFingerprint(old) === replaces.fingerprint && oldWeeks.every((s) => s.updatedAt === replaces.stamp);
+      if (untouched) {
+        // Swap in the new version, keeping the book design the leader picked.
+        series = series.map((s) => (s.id === old.id ? { ...s, design: old.design, designHistory: old.designHistory } : s));
+        next = { ...next, series: next.series.filter((s) => s.id !== old.id), services: next.services.filter((s) => s.seriesId !== old.id) };
+      } else {
+        // The leader changed their copy: keep it, and add the new version beside it under new ids.
+        const v = (id: string) => `${id}-${replaces.key}-next`;
+        series = series.map((s) => ({ ...s, id: v(s.id), title: `${s.title} (revised)`, design: old.design }));
+        services = services.map((s) => ({
+          ...s,
+          id: v(s.id),
+          seriesId: s.seriesId ? v(s.seriesId) : null,
+          sections: s.sections.map((sec) => ({ ...sec, id: v(sec.id), parts: sec.parts.map((p) => ({ ...p, id: v(p.id) })) })),
+        }));
+      }
+    }
+    series = series.filter((s) => !next.series.some((x) => x.id === s.id));
+    services = services.filter((s) => !next.services.some((x) => x.id === s.id));
     next = { ...next, series: [...next.series, ...series], services: [...next.services, ...services] };
   }
   for (const { data } of freshLayouts) {
@@ -50,10 +72,13 @@ const readDb = (): Database => {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const data = JSON.parse(raw);
-      const { services, series } = migrateLegacySeries(
+      const rawSeries: unknown[] = Array.isArray(data.series) ? data.series : [];
+      const legacy = migrateLegacySeries(
         Array.isArray(data.services) ? data.services : [],
-        Array.isArray(data.series) ? data.series.map(newSeries) : [],
+        rawSeries.map((x) => newSeries(x as Record<string, unknown>)),
       );
+      const { services } = legacy;
+      const series = migrateRuns(legacy.series, services, rawSeries);
       const layouts = Array.isArray(data.layouts) ? data.layouts.flatMap((l: unknown) => { try { return [readLayout(l)]; } catch { return []; } }) : [];
       return { version: 1, series, services, library: Array.isArray(data.library) ? data.library.map(newPart) : [], layouts };
     }
@@ -188,12 +213,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const updateSeries = useCallback((id: string, fn: (s: Series) => Series) => {
-    setDb((d) => {
-      const before = d.series.find((s) => s.id === id);
-      const next = { ...d, series: d.series.map((s) => (s.id === id ? { ...fn(s), updatedAt: Date.now() } : s)) };
-      const after = next.series.find((s) => s.id === id);
-      return before && after && before.startDate !== after.startDate ? reschedule(next, id) : next;
-    });
+    setDb((d) => ({ ...d, series: d.series.map((s) => (s.id === id ? { ...fn(s), updatedAt: Date.now() } : s)) }));
   }, []);
 
   const deleteSeries = useCallback((id: string) => {
@@ -253,10 +273,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Merge a backup or a single exported service. Existing ids are replaced.
   const importDatabase = useCallback((data: Partial<Database>) => {
-    const { services, series } = migrateLegacySeries(
+    const rawSeries: unknown[] = data.series ?? [];
+    const legacy = migrateLegacySeries(
       (data.services ?? []) as unknown as Record<string, unknown>[],
-      (data.series ?? []).map(newSeries),
+      rawSeries.map((x) => newSeries(x as Record<string, unknown>)),
     );
+    const { services } = legacy;
+    const series = migrateRuns(legacy.series, services, rawSeries);
     const library = (data.library ?? []).map(newPart);
     const layouts = (data.layouts ?? []).flatMap((l) => { try { return [readLayout(l)]; } catch { return []; } });
     setDb((d) => {
