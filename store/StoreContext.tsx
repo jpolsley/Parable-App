@@ -52,8 +52,9 @@ const withSamples = (db: Database): Database => {
     services = services.filter((s) => !next.services.some((x) => x.id === s.id));
     next = { ...next, series: [...next.series, ...series], services: [...next.services, ...services] };
   }
-  for (const { data } of freshLayouts) {
+  for (const { data, replacesId } of freshLayouts) {
     const pack = readLayout(data);
+    if (replacesId) next = { ...next, layouts: (next.layouts ?? []).filter((l) => l.id !== replacesId) };
     if (!(next.layouts ?? []).some((l) => l.id === pack.id)) next = { ...next, layouts: [...(next.layouts ?? []), pack] };
   }
   try {

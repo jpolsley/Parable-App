@@ -29,7 +29,8 @@ export const seriesFingerprint = (s: { title: string; description: string; bigId
 };
 
 // Book designs that come built in, added to the design library once per browser the same way.
-export const SAMPLE_LAYOUTS: { key: string; data: unknown }[] = [
-  { key: 'layout:spine', data: spine },
+export const SAMPLE_LAYOUTS: { key: string; data: unknown; replacesId?: string }[] = [
+  // Spine v2 has white paper; it takes the place of the older tan version in the library (books keep their own copy).
+  { key: 'layout:spine-v2', data: spine, replacesId: 'spine-v1' },
   { key: 'layout:poster-club', data: posterClub },
 ];
