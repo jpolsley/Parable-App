@@ -792,6 +792,8 @@ const M: React.FC<{ label: string; tone?: string; children: React.ReactNode }> =
   </div>
 );
 
+// "Read: Acts 8:26–38" is a scripture reading; "Read It · Sit In It · Live It" is a study, not a reading.
+const READ_TITLE = /^read(ing)?\b(?!\s+it\b)/i;
 const POINT = /^point\s+(\d+)\s*[:.–—-]\s*(.+)$/i;
 
 const PartBlock: React.FC<{ service: Service; part: Part; time?: string; lead?: React.ReactNode }> = ({ service, part, time, lead }) => {
@@ -800,7 +802,7 @@ const PartBlock: React.FC<{ service: Service; part: Part; time?: string; lead?: 
   const supplies = part.supplies.filter((s) => s.name.trim());
   const isQuestions = part.type === 'discussion' && (listItems(part.script).length > 1 || part.script.trim().endsWith('?'));
   const isShortVerse = part.type === 'bible-verse' && part.script.trim() && part.script.length < 400;
-  const isReading = !isShortVerse && (part.type === 'bible-verse' || /^read\b/i.test(part.title));
+  const isReading = !isShortVerse && (part.type === 'bible-verse' || READ_TITLE.test(part.title));
   const point = part.title.match(POINT);
   const readingRef = isReading ? part.title.replace(/^read(ing)?\s*[:–—-]?\s*/i, '') : '';
   const kind = part.optional ? 'Going deeper · optional'

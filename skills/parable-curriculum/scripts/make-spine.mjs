@@ -24,7 +24,7 @@ const cover = `
   </div>
   <div style="position:absolute;left:0.95in;top:0.6in;font-family:'IBM Plex Mono',monospace;font-size:7.5pt;letter-spacing:0.06em;color:${SAND};text-transform:uppercase;">Leader guide / No. {{weeks}}</div>
   <div style="position:absolute;left:0.95in;top:3.1in;width:4.1in;border:1.6pt solid ${CREAM};border-radius:16pt;padding:16pt 18pt 14pt;">
-    <p style="margin:0;font-size:10pt;letter-spacing:0.08em;text-transform:uppercase;line-height:1.35;">{{eyebrow}} / Street-level faith / Read it, live it</p>
+    <p style="margin:0;font-size:10pt;letter-spacing:0.08em;text-transform:uppercase;line-height:1.35;">{{eyebrow}}</p>
     <div style="height:1.2pt;background:${CREAM};margin:12pt 0;opacity:0.9;"></div>
     <p data-fit style="margin:0;height:1.25in;font-size:19pt;font-weight:600;text-transform:uppercase;line-height:1.12;">{{subtitle}}</p>
     <div style="display:flex;align-items:center;gap:10pt;margin-top:12pt;">
@@ -70,15 +70,23 @@ const css = `
 .pr-family-card, .pr-sg-close > div, .pr-roles > div { border: 1.5pt solid #1A1A18; border-radius: 12pt; }
 .pr-tag { background: ${BLUE}; border-radius: 3pt; }
 .pr-weeks { border-top: 4pt solid #1A1A18; }
+/* Spine's boxed questions and heavy rules are taller than the default; tighten them so each section keeps its page. */
+.pr[data-questions="boxed"] .pr-sg-questions ol { gap: 4pt; }
+.pr[data-questions="boxed"] .pr-sg-questions li { padding: 5pt 9pt; }
+.pr[data-questions="boxed"] .pr-questions li { padding: 4pt 8pt; margin-bottom: 3pt; }
+.pr-sg-idea > div { padding: 8pt 12pt; }
+.pr-sg-idea { margin-bottom: 10pt; }
+.pr-sg-notes { padding: 7pt 12pt; margin-bottom: 10pt; }
+.pr-sec-head { padding-bottom: 6pt; margin-bottom: 4pt; }
 .pr-weeks .n { font-family: 'Oswald Variable', sans-serif; color: ${BLUE}; }
 `;
 
 const pack = {
-  id: 'spine-v1',
+  id: 'spine-v2',
   name: 'Spine',
   description: 'Raw board black, a blue spine, a huge vertical title and outlined label boxes. Condensed caps throughout.',
   design: {
-    palette: { paper: '#F2EFE7', ink: '#1A1A18', accent: BLUE, secondary: SAND, muted: '#3A3934', deep: BOARD },
+    palette: { paper: '#FFFFFF', ink: '#1A1A18', accent: BLUE, secondary: SAND, muted: '#3A3934', deep: BOARD },
     type: { display: 'oswald', body: 'sans', label: 'sans', headingCase: 'caps' },
     page: { corners: 'soft', headerRule: 'heavy', mark: 'none' },
     components: { questions: 'boxed', scripture: 'rule' },

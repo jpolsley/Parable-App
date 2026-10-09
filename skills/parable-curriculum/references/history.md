@@ -96,3 +96,10 @@ way they are.
   "I would rather have the pdf and json file and then the chat letting me know what it did." → The skill now
   delivers the finished JSON and PDF, then reports. The app is bundled so the PDF can be made anywhere.
 - **Preserving the work:** "If I lost access to Claude… I could give the skill and it would understand." → This skill.
+
+- **Spine fixes (October 2026):** Justin printed B.L.E.S.S. in Spine: "I don't want tan color paper. Just white. Also, there are
+  some cut off issues." → Spine v2 has white paper and no leftover "Street-level faith" cover text. Fixed in the app:
+  a part titled "Read It · Sit In It · Live It" was mistaken for a scripture reading and printed as "IT · SIT IN IT · LIVE IT"
+  (only a title starting "Read:" or "Read <passage>" is a reading now); the "Symbols in use" key no longer splits across pages;
+  one-page sheets (small group, family, plan) may shrink to 76% before spilling. Still true: long Scripture sections (1.3 pages)
+  put "Read It · Sit In It · Live It" alone on the next page.

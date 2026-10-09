@@ -372,6 +372,8 @@
 .pr-p .pr-links { margin-top: 0; }
 
 /* ---------- Symbols legend ---------- */
+.pr-roles, .pr-legend { break-inside: avoid; }
+.pr-label { break-after: avoid; }
 .pr-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 6pt 18pt; }
 .pr-legend > div { display: flex; gap: 8pt; align-items: center; font-size: 8.5pt; color: var(--muted); }
 .pr-legend b { color: var(--ink); }

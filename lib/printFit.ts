@@ -8,6 +8,7 @@ const PX_PER_IN = 96;
 const CONTENT_WIDTH = (8.5 - 0.65 * 2) * PX_PER_IN; // letter, side margins from @page
 const CONTENT_HEIGHT = (11 - 0.6 - 0.7) * PX_PER_IN; // top and bottom margins from @page
 const MAX_SHRINK = 0.82; // never smaller than this, so text stays comfortable to read
+const MAX_SHRINK_SHEET = 0.76; // one-page sheets (small group guide, family page…) may shrink a little more than a flowing section: a few stranded lines on a second page look worse
 
 export const fitSectionsToPages = (root: HTMLElement) => {
   const sections = [...root.querySelectorAll<HTMLElement>('.pr-flow > .pr-sec, .pr-overview, .pr-sg, .pr-plan, .pr-family')];
@@ -29,7 +30,8 @@ export const fitSectionsToPages = (root: HTMLElement) => {
     const pages = Math.ceil(height / CONTENT_HEIGHT) - 1;
     if (pages < 1) continue;
     const scale = (CONTENT_HEIGHT * pages * 0.985) / height;
-    if (scale >= MAX_SHRINK) section.style.zoom = scale.toFixed(3);
+    const sheet = !section.matches('.pr-flow > .pr-sec');
+    if (scale >= (sheet ? MAX_SHRINK_SHEET : MAX_SHRINK)) section.style.zoom = scale.toFixed(3);
   }
   root.setAttribute('style', saved);
 };

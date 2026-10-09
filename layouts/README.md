@@ -12,7 +12,7 @@ week 3 its own background, layout and sticker (the leader guide divider has no `
 
 ```json
 {
-  "id": "spine-v1",
+  "id": "spine-v2",
   "name": "Spine",
   "description": "One line shown in the layout list.",
   "design": { "palette": {}, "type": {}, "page": {}, "components": {} },
